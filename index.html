@@ -1,0 +1,207 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#C8A532;
+  --gold-dark:#8B6E1A;
+  --gold-light:#F5E6B0;
+  --black:#1A1A1A;
+  --white:#FFFFFF;
+  --surface:#F7F3E8;
+  --border:#D4B84A;
+  --text-muted:#6B5A2A;
+}
+body{font-family:var(--font-sans);background:transparent;}
+.wrap{max-width:420px;margin:0 auto;padding:0 0 1.5rem;}
+.header{background:#1A1A1A;padding:1.25rem 1rem 1rem;text-align:center;border-radius:0 0 20px 20px;}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;}
+.logo-img{width:54px;height:54px;object-fit:contain;}
+.brand{text-align:left;}
+.brand-name{font-size:22px;font-weight:500;color:#C8A532;letter-spacing:0.5px;}
+.brand-sub{font-size:11px;color:#9A8A5A;letter-spacing:1px;text-transform:uppercase;}
+.tagline{font-size:11px;color:#7A6A4A;margin-top:6px;}
+.section-bar{display:flex;align-items:center;gap:8px;padding:1rem 1rem 0.5rem;margin-top:1rem;}
+.section-dot{width:8px;height:8px;border-radius:50%;background:#C8A532;}
+.section-label{font-size:11px;font-weight:500;color:#8B6E1A;letter-spacing:1.5px;text-transform:uppercase;}
+.card{background:#FFFFFF;border:1px solid #E8D98A;border-radius:14px;margin:0 0.75rem 0.75rem;overflow:hidden;}
+.card-header{background:#1A1A1A;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;}
+.card-title{color:#C8A532;font-size:14px;font-weight:500;display:flex;align-items:center;gap:7px;}
+.card-title i{font-size:16px;}
+.clear-btn{background:transparent;border:1px solid #4A4A3A;border-radius:8px;padding:5px 10px;color:#9A8A5A;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.clear-btn:hover{border-color:#C8A532;color:#C8A532;}
+.card-body{padding:1rem;}
+.field{margin-bottom:0.9rem;}
+.field:last-child{margin-bottom:0;}
+.label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#8B6E1A;margin-bottom:5px;letter-spacing:0.3px;}
+.label i{font-size:14px;color:#C8A532;}
+.req{color:#C8A532;margin-left:1px;}
+input[type=text],input[type=tel],textarea{
+  width:100%;padding:10px 12px;
+  border:1px solid #E8D98A;border-radius:10px;
+  font-size:14px;background:#FDFAF0;
+  color:#1A1A1A;font-family:var(--font-sans);
+  -webkit-appearance:none;
+}
+input[type=text]:focus,input[type=tel]:focus,textarea:focus{
+  outline:none;border-color:#C8A532;
+  box-shadow:0 0 0 3px rgba(200,165,50,0.15);
+  background:#FFFFFF;
+}
+textarea{resize:vertical;min-height:72px;line-height:1.5;}
+.loc-wrap{position:relative;}
+.loc-wrap input{padding-right:72px;}
+.verify-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#1A1A1A;border:none;border-radius:7px;padding:5px 9px;color:#C8A532;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:var(--font-sans);}
+.verify-btn:hover{background:#2A2A1A;}
+.actions{padding:0 0.75rem;display:flex;flex-direction:column;gap:10px;}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;border:none;width:100%;font-family:var(--font-sans);}
+.btn-wa{background:#C8A532;color:#1A1A1A;}
+.btn-wa:hover{background:#B8952A;}
+.btn-wa:active{transform:scale(0.98);}
+.btn-interstate{background:#1A1A1A;color:#C8A532;border:1px solid #3A3A2A;}
+.btn-interstate:hover{background:#2A2A1A;}
+.btn-interstate:active{transform:scale(0.98);}
+.preview-wrap{margin:0.75rem 0.75rem 0;background:#1A1A1A;border-radius:12px;padding:1rem;display:none;}
+.preview-wrap.visible{display:block;}
+.preview-label{font-size:11px;color:#9A8A5A;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.preview-text{font-size:12px;color:#E8D98A;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.6;}
+.divider{height:1px;background:#E8D98A;margin:0 1rem 0.75rem;}
+</style>
+
+<h2 class="sr-only">Chaverim Bergen County Emergency Dispatch Form</h2>
+
+<div class="wrap">
+  <div class="header">
+    <div class="logo-row">
+      <img class="logo-img" src="https://i.ibb.co/Kc2B52nS/download-1.png" alt="Chaverim logo" />
+      <div class="brand">
+        <div class="brand-name">Chaverim</div>
+        <div class="brand-sub">Bergen County</div>
+        <div class="tagline">Emergency Response Dispatch</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-bar">
+    <div class="section-dot"></div>
+    <div class="section-label">New call</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+        Emergency Dispatch Form
+      </div>
+      <button class="clear-btn" onclick="clearForm()">
+        <i class="ti ti-refresh" aria-hidden="true" style="font-size:13px;"></i> Clear
+      </button>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:0.9rem;">
+        <div class="field" style="margin-bottom:0;">
+          <div class="label"><i class="ti ti-hash" aria-hidden="true"></i> Call # <span class="req">*</span></div>
+          <input type="text" id="callNum" placeholder="1455" />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <div class="label"><i class="ti ti-phone" aria-hidden="true"></i> Phone</div>
+          <input type="tel" id="phone" placeholder="914-000-0000" />
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label"><i class="ti ti-map-pin" aria-hidden="true"></i> Location <span class="req">*</span></div>
+        <div class="loc-wrap">
+          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" />
+          <button class="verify-btn" onclick="verifyLocation()">
+            <i class="ti ti-map-pin" aria-hidden="true" style="font-size:12px;"></i> Map
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label"><i class="ti ti-user" aria-hidden="true"></i> Caller name</div>
+        <input type="text" id="callerName" placeholder="John Doe" />
+      </div>
+
+      <div class="field">
+        <div class="label"><i class="ti ti-file-description" aria-hidden="true"></i> Nature of emergency <span class="req">*</span></div>
+        <textarea id="nature" placeholder="Flat tire, lockout, jump start, Genesis GV80, etc."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-wa" onclick="dispatchWhatsApp()">
+      <i class="ti ti-message-circle" aria-hidden="true"></i> Dispatch via WhatsApp
+    </button>
+    <button class="btn btn-interstate" onclick="dispatchInterstate()">
+      <i class="ti ti-car" aria-hidden="true"></i> Dispatch to Interstate
+    </button>
+  </div>
+
+  <div class="preview-wrap" id="preview">
+    <div class="preview-label">Message preview</div>
+    <div class="preview-text" id="previewText"></div>
+  </div>
+</div>
+
+<script>
+function getFormData(){
+  return{
+    callNum:document.getElementById('callNum').value,
+    phone:document.getElementById('phone').value,
+    location:document.getElementById('location').value,
+    name:document.getElementById('callerName').value,
+    nature:document.getElementById('nature').value
+  };
+}
+function buildWA(d){
+  return[
+    'Call#:'+d.callNum,
+    'Location:'+d.location,
+    'Phone:'+d.phone,
+    'Name:'+d.name,
+    'Nature:'+d.nature,
+    '',
+    'https://form.jotform.com/212776438913868',
+    'SAFETY FIRST!  Please remember to wear your Chaverim vest.',
+    'Please remember to have the caller sign the waiver.'
+  ].join('\n');
+}
+function buildInterstate(d){
+  return[
+    'New Call (BC)',
+    'Location: '+d.location,
+    'Phone: '+d.phone,
+    'Name: '+d.name,
+    'Nature: '+d.nature
+  ].join('\n');
+}
+function showPreview(txt){
+  var p=document.getElementById('preview');
+  document.getElementById('previewText').textContent=txt;
+  p.classList.add('visible');
+}
+function dispatchWhatsApp(){
+  var d=getFormData();
+  if(!d.callNum||!d.location||!d.nature){alert('Please fill in Call #, Location, and Nature of Emergency.');return;}
+  var msg=buildWA(d);
+  showPreview(msg);
+  openLink('https://wa.me/?text='+encodeURIComponent(msg));
+}
+function dispatchInterstate(){
+  var d=getFormData();
+  if(!d.location||!d.nature){alert('Please fill in Location and Nature of Emergency.');return;}
+  var msg=buildInterstate(d);
+  showPreview(msg);
+  openLink('https://wa.me/18458524357?text='+encodeURIComponent(msg));
+}
+function verifyLocation(){
+  var loc=document.getElementById('location').value;
+  if(loc)openLink('https://maps.google.com/?q='+encodeURIComponent(loc));
+}
+function clearForm(){
+  ['callNum','phone','location','callerName','nature'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('preview').classList.remove('visible');
+}
+</script>
