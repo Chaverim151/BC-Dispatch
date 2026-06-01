@@ -194,7 +194,7 @@
   <div>
     <div class="brand-name">Chaverim</div>
     <div class="brand-sub">Bergen County</div>
-    <div class="brand-tag">Emergency Response Dispatch</div>
+    <div class="brand-tag">Dispatch Center</div>
   </div>
 </div>
 
@@ -206,7 +206,7 @@
 
   <div class="form-card">
     <div class="card-hdr">
-      <div class="card-ttl"><i class="ti ti-alert-triangle"></i> Emergency Dispatch Form</div>
+      <div class="card-ttl"><i class="ti ti-alert-triangle"></i> Dispatch Form</div>
       <button class="clear-btn" onclick="clearForm()"><i class="ti ti-refresh" style="font-size:13px;"></i> Clear Call</button>
     </div>
 
@@ -268,9 +268,9 @@
         </div>
       </div>
 
-      <!-- Nature of emergency -->
+      <!-- Nature of call -->
       <div class="field">
-        <div class="lbl"><i class="ti ti-list"></i> Nature of emergency <span class="req">*</span></div>
+        <div class="lbl"><i class="ti ti-list"></i> Nature of call <span class="req">*</span></div>
         <select id="natureType" onchange="onNatureChange()">
           <option value="">— Select type —</option>
           <optgroup label="Vehicle">
@@ -282,7 +282,7 @@
             <option value="vehicle_pullout">Vehicle Pullout</option>
           </optgroup>
           <optgroup label="Community / Home">
-            <option value="flood">Flood (House)</option>
+            <option value="flood">Flood</option>
             <option value="heater">Heater Request</option>
             <option value="ac">AC Request</option>
           </optgroup>
@@ -297,7 +297,7 @@
         <div class="field">
           <div class="lbl"><i class="ti ti-pencil"></i> Describe the emergency <span class="req">*</span></div>
           <div class="inp-wrap">
-            <input type="text" id="customNature" placeholder="Describe the nature of the emergency..." />
+            <input type="text" id="customNature" placeholder="Describe the nature of the call..." />
             <button class="field-clear" onclick="clearField('customNature')" tabindex="-1">&times;</button>
           </div>
         </div>
@@ -901,7 +901,7 @@ async function saveCallNumber(num) {
 
 function buildWA(d) {
   var lines = [];
-  if (d.urgent) lines.push('*** URGENT CALL ***', '');
+  if (d.urgent) lines.push('*URGENT CALL*', '');
   lines.push('Call#:' + d.callNum);
   lines.push('');
   lines.push('Location:' + d.location);
@@ -921,7 +921,7 @@ function buildWA(d) {
 
 function buildInt(d) {
   var lines = [];
-  if (d.urgent) lines.push('*** URGENT ***', '');
+  if (d.urgent) lines.push('*URGENT*', '');
   lines.push('New Call (BC)');
   lines.push('');
   lines.push('Location: ' + d.location);
@@ -941,7 +941,7 @@ function showPreview(txt) {
 
 window.dispatchWhatsApp = async function() {
   var d = getFormData();
-  if (!d.callNum || !d.location || !d.nature) { alert('Please fill in Call #, Location, and Nature of Emergency.'); return; }
+  if (!d.callNum || !d.location || !d.nature) { alert('Please fill in Call #, Location, and Nature of Call.'); return; }
   var msg = buildWA(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
@@ -950,7 +950,7 @@ window.dispatchWhatsApp = async function() {
 
 window.dispatchInterstate = async function() {
   var d = getFormData();
-  if (!d.location || !d.nature) { alert('Please fill in Location and Nature of Emergency.'); return; }
+  if (!d.location || !d.nature) { alert('Please fill in Location and Nature of Call.'); return; }
   var msg = buildInt(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
