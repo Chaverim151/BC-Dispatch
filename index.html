@@ -109,6 +109,22 @@
   .ac-qty { display: none; }
   .ac-qty.on { display: block; }
 
+  /* ── Make logo ── */
+  .make-logo-row { display: flex; align-items: center; gap: 10px; }
+  .make-logo-wrap { width: 48px; height: 48px; background: #fff; border: 1.5px solid #E0CC80; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; padding: 4px; }
+  .make-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
+  /* ── Per-field clear button ── */
+  .inp-wrap { position: relative; display: flex; align-items: center; }
+  .inp-wrap input, .inp-wrap textarea { padding-right: 32px; }
+  .inp-wrap.has-save input { padding-right: 72px; }
+  .field-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #BBA860; font-size: 16px; cursor: pointer; padding: 2px 4px; line-height: 1; opacity: 0; pointer-events: none; transition: opacity 0.15s, color 0.15s; font-family: inherit; }
+  .inp-wrap.has-save .field-clear { right: 44px; }
+  .inp-wrap textarea ~ .field-clear { top: 12px; transform: none; }
+  .field-clear:hover { color: #C8A532; }
+  .inp-wrap input:not(:placeholder-shown) ~ .field-clear,
+  .inp-wrap textarea:not(:placeholder-shown) ~ .field-clear { opacity: 1; pointer-events: auto; }
+
   /* ── Save custom btn ── */
   .save-custom-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #0F0E06; border: 1px solid #3A3010; border-radius: 7px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #C8A532; cursor: pointer; font-size: 14px; padding: 0; transition: all 0.15s; }
   .save-custom-btn:hover { background: #C8A532; color: #0F0E06; }
@@ -200,22 +216,27 @@
       <div class="grid2">
         <div>
           <div class="lbl"><i class="ti ti-hash"></i> Call # <span class="req">*</span></div>
-          <div class="callnum-wrap">
+          <div class="inp-wrap callnum-wrap">
             <input type="text" id="callNum" placeholder="Loading..." />
+            <button class="field-clear" onclick="clearField('callNum')" tabindex="-1">&times;</button>
             <span class="callnum-badge" id="callNumBadge">AUTO</span>
           </div>
         </div>
         <div>
           <div class="lbl"><i class="ti ti-phone"></i> Phone</div>
-          <input type="tel" id="phone" placeholder="(555) 123-4567" />
+          <div class="inp-wrap">
+            <input type="tel" id="phone" placeholder="(555) 123-4567" />
+            <button class="field-clear" onclick="clearField('phone')" tabindex="-1">&times;</button>
+          </div>
         </div>
       </div>
 
       <!-- Location -->
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
-        <div class="loc-wrap">
-          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" />
+        <div class="inp-wrap loc-wrap">
+          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" />
+          <button class="field-clear" onclick="clearField('location')" tabindex="-1" style="right:56px;">&times;</button>
           <button class="map-btn" onclick="verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
         </div>
       </div>
@@ -223,7 +244,10 @@
       <!-- Caller name -->
       <div class="field">
         <div class="lbl"><i class="ti ti-user"></i> Caller name</div>
-        <input type="text" id="callerName" placeholder="John Doe" />
+        <div class="inp-wrap">
+          <input type="text" id="callerName" placeholder="John Doe" />
+          <button class="field-clear" onclick="clearField('callerName')" tabindex="-1">&times;</button>
+        </div>
       </div>
 
       <!-- Nature of emergency -->
@@ -254,7 +278,10 @@
       <div class="ac-qty" id="customNatureWrap">
         <div class="field">
           <div class="lbl"><i class="ti ti-pencil"></i> Describe the emergency <span class="req">*</span></div>
-          <input type="text" id="customNature" placeholder="Describe the nature of the emergency..." />
+          <div class="inp-wrap">
+            <input type="text" id="customNature" placeholder="Describe the nature of the emergency..." />
+            <button class="field-clear" onclick="clearField('customNature')" tabindex="-1">&times;</button>
+          </div>
         </div>
       </div>
 
@@ -277,7 +304,10 @@
       <div class="ac-qty" id="floodEquip">
         <div class="field">
           <div class="lbl"><i class="ti ti-tools"></i> Equipment needed <span style="font-weight:400;color:#9A8050;">(if any)</span></div>
-          <input type="text" id="floodEquipment" placeholder="e.g. pumps, wet vac, towels..." />
+          <div class="inp-wrap">
+            <input type="text" id="floodEquipment" placeholder="e.g. pumps, wet vac, towels..." />
+            <button class="field-clear" onclick="clearField('floodEquipment')" tabindex="-1">&times;</button>
+          </div>
         </div>
       </div>
 
@@ -285,47 +315,59 @@
       <div class="ac-qty" id="qtyField">
         <div class="field">
           <div class="lbl"><i class="ti ti-stack"></i> <span id="qtyLabel">Quantity needed</span></div>
-          <input type="number" id="acQuantity" placeholder="How many?" min="1" max="99" />
+          <div class="inp-wrap">
+            <input type="number" id="acQuantity" placeholder="How many?" min="1" max="99" />
+            <button class="field-clear" onclick="clearField('acQuantity')" tabindex="-1">&times;</button>
+          </div>
         </div>
       </div>
 
       <!-- Vehicle details -->
       <div class="vehicle-fields" id="vehicleFields">
         <div class="sub-hdr">Vehicle info</div>
-        <div class="grid3">
-          <div>
-            <div class="lbl"><i class="ti ti-calendar"></i> Year</div>
-            <input type="text" id="vYear" placeholder="2022" maxlength="4" />
-          </div>
+
+        <div class="grid2" style="margin-bottom:1rem;">
           <div>
             <div class="lbl"><i class="ti ti-palette"></i> Color</div>
-            <div style="position:relative;">
+            <div class="inp-wrap has-save">
               <input type="text" id="vColor" placeholder="Silver, Black..." list="colorList" autocomplete="off" />
               <datalist id="colorList"></datalist>
-              <button class="save-custom-btn" onclick="saveCustomColor()" title="Save this color to database">
-                <i class="ti ti-plus"></i>
-              </button>
+              <button class="field-clear" onclick="clearField('vColor')" tabindex="-1">&times;</button>
+              <button class="save-custom-btn" onclick="saveCustomColor()" title="Save this color"><i class="ti ti-plus"></i></button>
             </div>
           </div>
           <div>
-            <div class="lbl"><i class="ti ti-car"></i> Make</div>
-            <div style="position:relative;">
-              <input type="text" id="vMake" placeholder="Genesis, Toyota..." list="makeList" autocomplete="off" oninput="onMakeInput()" />
-              <datalist id="makeList"></datalist>
-              <button class="save-custom-btn" onclick="saveCustomMake()" title="Save this make to database">
-                <i class="ti ti-plus"></i>
-              </button>
+            <div class="lbl"><i class="ti ti-calendar"></i> Year</div>
+            <div class="inp-wrap">
+              <input type="text" id="vYear" placeholder="2022" maxlength="4" />
+              <button class="field-clear" onclick="clearField('vYear')" tabindex="-1">&times;</button>
             </div>
           </div>
         </div>
+
+        <!-- Make with logo -->
+        <div class="field">
+          <div class="lbl"><i class="ti ti-car"></i> Make</div>
+          <div class="make-logo-row">
+            <div id="makeLogoWrap" class="make-logo-wrap" style="display:none;">
+              <img id="makeLogo" src="" alt="" />
+            </div>
+            <div class="inp-wrap has-save" style="flex:1;">
+              <input type="text" id="vMake" placeholder="Genesis, Toyota..." list="makeList" autocomplete="off" oninput="onMakeInput()" />
+              <datalist id="makeList"></datalist>
+              <button class="field-clear" onclick="clearField('vMake');updateMakeLogo('');" tabindex="-1">&times;</button>
+              <button class="save-custom-btn" onclick="saveCustomMake()" title="Save this make"><i class="ti ti-plus"></i></button>
+            </div>
+          </div>
+        </div>
+
         <div class="field">
           <div class="lbl"><i class="ti ti-car-suv"></i> Model</div>
-          <div style="position:relative;">
+          <div class="inp-wrap has-save">
             <input type="text" id="vModel" placeholder="GV80, Camry..." list="modelList" autocomplete="off" />
             <datalist id="modelList"></datalist>
-            <button class="save-custom-btn" onclick="saveCustomModel()" title="Save this model to database">
-              <i class="ti ti-plus"></i>
-            </button>
+            <button class="field-clear" onclick="clearField('vModel')" tabindex="-1">&times;</button>
+            <button class="save-custom-btn" onclick="saveCustomModel()" title="Save this model"><i class="ti ti-plus"></i></button>
           </div>
         </div>
       </div>
@@ -333,7 +375,10 @@
       <!-- Additional notes -->
       <div class="field">
         <div class="lbl"><i class="ti ti-notes"></i> Additional notes</div>
-        <textarea id="notes" placeholder="Any extra details..."></textarea>
+        <div class="inp-wrap" style="align-items:flex-start;">
+          <textarea id="notes" placeholder="Any extra details..."></textarea>
+          <button class="field-clear" onclick="clearField('notes')" tabindex="-1" style="top:10px;transform:none;">&times;</button>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -373,42 +418,56 @@ window.isUrgent = false;
 window.chips = {};
 window.makesData = {};
 
-// ── API Ninjas key — replace with your new key after regenerating ──
-const API_NINJAS_KEY = 'YOUR_NEW_API_NINJAS_KEY_HERE';
-
-// ── Fetch makes from API Ninjas ──
-async function fetchMakesFromAPI() {
-  const res = await fetch('https://api.api-ninjas.com/v1/carmakes', {
-    headers: { 'X-Api-Key': API_NINJAS_KEY }
-  });
-  if (!res.ok) throw new Error('API Ninjas makes fetch failed');
-  const data = await res.json();
-  // Returns array of strings e.g. ["Toyota","Honda",...]
-  return data;
-}
-
-// ── Fetch models from API Ninjas for a given make ──
-async function fetchModelsFromAPI(make) {
-  const res = await fetch('https://api.api-ninjas.com/v1/carmodels?make=' + encodeURIComponent(make), {
-    headers: { 'X-Api-Key': API_NINJAS_KEY }
-  });
-  if (!res.ok) throw new Error('API Ninjas models fetch failed');
-  const data = await res.json();
-  // Returns array of strings
-  return data;
-}
+// ── Comprehensive built-in makes & models (no seed script needed) ──
+window.makesData = {
+  "Acura":["ILX","Integra","MDX","RDX","TLX","ZDX"],
+  "Alfa Romeo":["Giulia","Giulietta","Stelvio","Tonale"],
+  "Audi":["A3","A4","A5","A6","A7","A8","e-tron","Q3","Q5","Q7","Q8","RS3","RS5","RS7","S3","S4","S5","TT"],
+  "BMW":["2 Series","3 Series","4 Series","5 Series","7 Series","8 Series","i3","i4","iX","M3","M4","M5","X1","X2","X3","X4","X5","X6","X7","Z4"],
+  "Buick":["Enclave","Encore","Encore GX","Envision","LaCrosse"],
+  "Cadillac":["CT4","CT5","Escalade","Escalade ESV","Lyriq","XT4","XT5","XT6"],
+  "Chevrolet":["Blazer","Bolt EV","Colorado","Corvette","Equinox","Express","Malibu","Silverado 1500","Silverado 2500","Silverado 3500","Suburban","Tahoe","Traverse","Trax"],
+  "Chrysler":["300","Pacifica","Voyager"],
+  "Dodge":["Challenger","Charger","Durango","Hornet"],
+  "Ford":["Bronco","Bronco Sport","E-Transit","Edge","Escape","Explorer","Expedition","F-150","F-250","F-350","Maverick","Mustang","Mustang Mach-E","Ranger","Transit","Transit Connect"],
+  "Genesis":["G70","G80","G90","GV60","GV70","GV80"],
+  "GMC":["Acadia","Canyon","Envoy","Sierra 1500","Sierra 2500","Sierra 3500","Terrain","Yukon","Yukon XL"],
+  "Honda":["Accord","Civic","CR-V","HR-V","Odyssey","Passport","Pilot","Ridgeline"],
+  "Hyundai":["Elantra","Ioniq 5","Ioniq 6","Kona","Palisade","Santa Cruz","Santa Fe","Sonata","Tucson","Venue"],
+  "Infiniti":["Q50","Q60","QX50","QX55","QX60","QX80"],
+  "Jeep":["Cherokee","Commander","Compass","Gladiator","Grand Cherokee","Grand Cherokee L","Renegade","Wagoneer","Wrangler"],
+  "Kia":["Carnival","EV6","K5","Niro","Seltos","Sorento","Soul","Sportage","Stinger","Telluride"],
+  "Land Rover":["Defender","Discovery","Discovery Sport","Range Rover","Range Rover Evoque","Range Rover Sport","Range Rover Velar"],
+  "Lexus":["ES","GX","IS","LC","LS","LX","NX","RX","UX"],
+  "Lincoln":["Aviator","Corsair","Navigator","Nautilus"],
+  "Maserati":["Ghibli","GranTurismo","Grecale","Levante","Quattroporte"],
+  "Mazda":["CX-30","CX-5","CX-50","CX-9","CX-90","Mazda3","Mazda6","MX-5 Miata"],
+  "Mercedes-Benz":["A-Class","C-Class","CLA","CLS","E-Class","EQB","EQE","EQS","G-Class","GLA","GLB","GLC","GLE","GLS","S-Class","Sprinter"],
+  "MINI":["Clubman","Convertible","Countryman","Hardtop"],
+  "Mitsubishi":["Eclipse Cross","Outlander","Outlander Sport"],
+  "Nissan":["Altima","Armada","Frontier","Kicks","Leaf","Maxima","Murano","Pathfinder","Rogue","Rogue Sport","Sentra","Titan","Versa"],
+  "Porsche":["911","Cayenne","Macan","Panamera","Taycan"],
+  "Ram":["1500","2500","3500","ProMaster","ProMaster City"],
+  "Rivian":["R1S","R1T"],
+  "Rolls-Royce":["Cullinan","Ghost","Phantom","Spectre","Wraith"],
+  "Subaru":["Ascent","BRZ","Crosstrek","Forester","Impreza","Legacy","Outback","Solterra","WRX"],
+  "Tesla":["Cybertruck","Model 3","Model S","Model X","Model Y"],
+  "Toyota":["4Runner","bZ4X","Camry","Corolla","Corolla Cross","GR86","Highlander","Land Cruiser","Prius","RAV4","RAV4 Prime","Sequoia","Sienna","Tacoma","Tundra","Venza"],
+  "Volkswagen":["Atlas","Atlas Cross Sport","Golf","ID.4","Jetta","Passat","Taos","Tiguan"],
+  "Volvo":["C40","S60","S90","V60","V90","XC40","XC60","XC90"],
+  "Other":["Other"]
+};
 
 // ── Load all data on startup ──
 async function loadAll() {
   try {
-    // 1. Last call number
+    // 1. Last call number from Firebase
     const callSnap = await get(ref(db, 'meta/lastCallNumber'));
     const lastNum = callSnap.exists() ? callSnap.val() : 1000;
-    const nextNum = lastNum + 1;
-    document.getElementById('callNum').value = nextNum;
-    document.getElementById('callNum').dataset.auto = nextNum;
+    document.getElementById('callNum').value = lastNum + 1;
+    document.getElementById('callNum').dataset.auto = lastNum + 1;
 
-    // 2. Colors
+    // 2. Colors from Firebase (with defaults)
     const colorsSnap = await get(ref(db, 'colors'));
     var colorList = [];
     if (colorsSnap.exists()) {
@@ -420,59 +479,29 @@ async function loadAll() {
     }
     populateColors(colorList);
 
-    // 3. Makes — try API Ninjas first, fall back to Firebase, then hardcoded defaults
-    try {
-      const apiMakes = await fetchMakesFromAPI();
-      if (apiMakes && apiMakes.length > 0) {
-        // Build makesData object from API (models loaded lazily on make input)
-        window.makesData = {};
-        apiMakes.forEach(function(m) { window.makesData[m] = []; });
-        // Merge any custom makes saved in Firebase
-        const fbMakesSnap = await get(ref(db, 'makes'));
-        if (fbMakesSnap.exists()) {
-          const fbMakes = fbMakesSnap.val();
-          Object.keys(fbMakes).forEach(function(m) {
-            if (!window.makesData[m]) window.makesData[m] = fbMakes[m];
+    // 3. Merge any custom makes saved by dispatchers into the built-in list
+    const makesSnap = await get(ref(db, 'makes'));
+    if (makesSnap.exists()) {
+      const saved = makesSnap.val();
+      Object.keys(saved).forEach(function(m) {
+        if (!window.makesData[m]) window.makesData[m] = saved[m];
+        else {
+          // Merge custom models into existing make
+          var existing = window.makesData[m];
+          var custom = Array.isArray(saved[m]) ? saved[m] : [];
+          custom.forEach(function(model) {
+            if (existing.indexOf(model) === -1) existing.push(model);
           });
+          window.makesData[m] = existing.sort();
         }
-        populateMakes(window.makesData);
-        showToast('\u2713 ' + apiMakes.length + ' makes loaded');
-      }
-    } catch(apiErr) {
-      console.warn('API Ninjas unavailable, using Firebase/defaults:', apiErr);
-      // Fall back to Firebase
-      const makesSnap = await get(ref(db, 'makes'));
-      if (makesSnap.exists()) {
-        window.makesData = makesSnap.val();
-        populateMakes(window.makesData);
-      } else {
-        const defaultMakes = {
-          "Acura":["ILX","MDX","RDX","TLX"],
-          "BMW":["3 Series","5 Series","X3","X5"],
-          "Chevrolet":["Equinox","Malibu","Silverado","Tahoe","Traverse"],
-          "Ford":["Bronco","Edge","Escape","Explorer","F-150","Mustang"],
-          "Genesis":["G70","G80","G90","GV70","GV80"],
-          "Honda":["Accord","CR-V","HR-V","Odyssey","Pilot"],
-          "Hyundai":["Elantra","Palisade","Santa Fe","Sonata","Tucson"],
-          "Jeep":["Cherokee","Grand Cherokee","Wrangler"],
-          "Kia":["Carnival","Sorento","Sportage","Telluride"],
-          "Lexus":["ES","GX","NX","RX"],
-          "Mercedes-Benz":["C-Class","E-Class","GLE","GLS","Sprinter"],
-          "Nissan":["Altima","Murano","Pathfinder","Rogue"],
-          "Tesla":["Model 3","Model S","Model X","Model Y"],
-          "Toyota":["4Runner","Camry","Corolla","Highlander","RAV4","Sienna","Tacoma"],
-          "Other":["Other"]
-        };
-        await set(ref(db, 'makes'), defaultMakes);
-        window.makesData = defaultMakes;
-        populateMakes(defaultMakes);
-      }
+      });
     }
+    populateMakes(window.makesData);
 
-    // 3. Custom natures (from DB, merged with built-in)
+    // 4. Custom natures from Firebase
     const naturesSnap = await get(ref(db, 'customNatures'));
     if (naturesSnap.exists()) {
-      const customNatures = naturesSnap.val(); // array or object
+      const customNatures = naturesSnap.val();
       const sel = document.getElementById('natureType');
       const customGroup = document.createElement('optgroup');
       customGroup.label = 'Custom';
@@ -484,7 +513,6 @@ async function loadAll() {
         customGroup.appendChild(opt);
       });
       if (customGroup.children.length > 0) {
-        // Insert before "Other" optgroup
         const otherGroup = sel.querySelector('optgroup[label="Other"]');
         sel.insertBefore(customGroup, otherGroup);
       }
@@ -493,8 +521,10 @@ async function loadAll() {
     document.getElementById('dbLoading').classList.add('hidden');
   } catch(e) {
     console.error('Firebase load error:', e);
-    document.getElementById('dbLoading').innerHTML = '<i class="ti ti-wifi-off" style="color:#E05000;font-size:16px;"></i><span style="color:#C87040;">Could not connect to database — using defaults</span>';
-    // Set fallback call number
+    document.getElementById('dbLoading').innerHTML = '<i class="ti ti-wifi-off" style="color:#E05000;font-size:16px;"></i><span style="color:#C87040;">Could not connect — some features limited</span>';
+    populateMakes(window.makesData);
+    populateColors(['Beige','Black','Blue','Brown','Gold','Gray','Green','Maroon','Navy','Orange','Pink','Purple','Red','Silver','Tan','White','Yellow']);
+    setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
     document.getElementById('callNum').value = '';
     document.getElementById('callNum').placeholder = 'Enter manually';
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
@@ -527,36 +557,73 @@ function populateMakes(makesObj) {
   });
 }
 
-// ── On make input → fetch & populate model datalist ──
-window.onMakeInput = async function() {
+// ── Car brand logo URLs (via logo.dev CDN — no API key needed) ──
+var MAKE_LOGOS = {
+  "Acura":         "https://img.logo.dev/acura.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Alfa Romeo":    "https://img.logo.dev/alfaromeo.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Audi":          "https://img.logo.dev/audi.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "BMW":           "https://img.logo.dev/bmw.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Buick":         "https://img.logo.dev/buick.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Cadillac":      "https://img.logo.dev/cadillac.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Chevrolet":     "https://img.logo.dev/chevrolet.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Chrysler":      "https://img.logo.dev/chrysler.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Dodge":         "https://img.logo.dev/dodge.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Ford":          "https://img.logo.dev/ford.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Genesis":       "https://img.logo.dev/genesis.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "GMC":           "https://img.logo.dev/gmc.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Honda":         "https://img.logo.dev/honda.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Hyundai":       "https://img.logo.dev/hyundai.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Infiniti":      "https://img.logo.dev/infinitiusa.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Jeep":          "https://img.logo.dev/jeep.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Kia":           "https://img.logo.dev/kia.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Land Rover":    "https://img.logo.dev/landrover.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Lexus":         "https://img.logo.dev/lexus.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Lincoln":       "https://img.logo.dev/lincoln.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Maserati":      "https://img.logo.dev/maserati.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Mazda":         "https://img.logo.dev/mazda.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Mercedes-Benz": "https://img.logo.dev/mercedes-benz.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "MINI":          "https://img.logo.dev/mini.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Mitsubishi":    "https://img.logo.dev/mitsubishicars.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Nissan":        "https://img.logo.dev/nissanusa.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Porsche":       "https://img.logo.dev/porsche.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Ram":           "https://img.logo.dev/ramtrucks.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Rivian":        "https://img.logo.dev/rivian.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Rolls-Royce":   "https://img.logo.dev/rolls-roycemotorcars.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Subaru":        "https://img.logo.dev/subaru.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Tesla":         "https://img.logo.dev/tesla.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Toyota":        "https://img.logo.dev/toyota.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Volkswagen":    "https://img.logo.dev/vw.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
+  "Volvo":         "https://img.logo.dev/volvocars.com?token=pk_NlWPjTaRRoKMrASNrCesBg"
+};
+
+function updateMakeLogo(make) {
+  var wrap = document.getElementById('makeLogoWrap');
+  var img  = document.getElementById('makeLogo');
+  var url  = MAKE_LOGOS[make];
+  if (url) {
+    img.src = url;
+    img.alt = make + ' logo';
+    wrap.style.display = 'flex';
+    img.onerror = function(){ wrap.style.display = 'none'; };
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+// ── On make input → populate model datalist from Firebase cache ──
+window.onMakeInput = function() {
   var make = document.getElementById('vMake').value.trim();
   var dl = document.getElementById('modelList');
   dl.innerHTML = '';
   document.getElementById('vModel').value = '';
-  if (!make) return;
-
-  // Check cache first
-  if (window.makesData[make] && window.makesData[make].length > 0) {
-    var models = window.makesData[make];
-    if (models.models) models = models.models;
-    models.forEach(function(m) {
-      var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
-    });
-    return;
-  }
-
-  // Fetch from API Ninjas
-  try {
-    const apiModels = await fetchModelsFromAPI(make);
-    if (apiModels && apiModels.length > 0) {
-      window.makesData[make] = apiModels;
-      apiModels.forEach(function(m) {
-        var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
-      });
-    }
-  } catch(e) {
-    console.warn('Could not fetch models from API Ninjas:', e);
-  }
+  updateMakeLogo(make);
+  if (!make || !window.makesData[make]) return;
+  var models = window.makesData[make];
+  if (models.models) models = models.models;
+  if (!Array.isArray(models)) return;
+  models.forEach(function(m) {
+    var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+  });
 };
 
 // ── Save custom color ──
@@ -726,9 +793,8 @@ async function saveCallNumber(num) {
 }
 
 function buildWA(d) {
-  var u = '\uD83D\uDEA8'; // 🚨
   var lines = [];
-  if (d.urgent) lines.push(u + ' URGENT CALL ' + u, '');
+  if (d.urgent) lines.push('*** URGENT CALL ***', '');
   lines.push('Call#:' + d.callNum);
   lines.push('');
   lines.push('Location:' + d.location);
@@ -747,9 +813,8 @@ function buildWA(d) {
 }
 
 function buildInt(d) {
-  var u = '\uD83D\uDEA8'; // 🚨
   var lines = [];
-  if (d.urgent) lines.push(u + ' URGENT ' + u, '');
+  if (d.urgent) lines.push('*** URGENT ***', '');
   lines.push('New Call (BC)');
   lines.push('');
   lines.push('Location: ' + d.location);
@@ -794,6 +859,7 @@ window.clearForm = async function() {
   ['phone','location','callerName','notes','vYear','vColor','vMake','vModel','acQuantity','floodEquipment','customNature'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('makeLogoWrap').style.display = 'none';
   document.getElementById('natureType').value = '';
   // clear model datalist
   document.getElementById('modelList').innerHTML = '';
