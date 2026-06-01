@@ -7,220 +7,144 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #F2ECD8;
-    min-height: 100vh;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F2ECD8; min-height: 100vh; }
 
   /* ── Header ── */
-  .header {
-    background: #0F0E06;
-    border-bottom: 2.5px solid #C8A532;
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
+  .header { background: #0F0E06; border-bottom: 2.5px solid #C8A532; padding: 1rem 1.5rem; display: flex; align-items: center; gap: 16px; }
   .logo-badge { width: 58px; height: 58px; border-radius: 12px; overflow: hidden; flex-shrink: 0; border: 2px solid #C8A532; }
   .logo-badge img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .brand-name { font-size: 22px; font-weight: 600; color: #C8A532; line-height: 1.1; letter-spacing: 0.3px; }
+  .brand-name { font-size: 22px; font-weight: 600; color: #C8A532; line-height: 1.1; }
   .brand-sub { font-size: 10px; color: #C8A532; letter-spacing: 2.5px; text-transform: uppercase; opacity: 0.6; margin-top: 2px; }
   .brand-tag { font-size: 11px; color: #7A6830; margin-top: 3px; }
 
-  /* ── Page body ── */
-  .page {
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 1.5rem 1.25rem 3rem;
-  }
+  /* ── Loading overlay ── */
+  .db-loading { display: flex; align-items: center; gap: 8px; background: #1A1600; border: 1px solid #3A3010; border-radius: 10px; padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 12px; color: #9A8030; }
+  .db-loading.hidden { display: none; }
+  .spinner { width: 14px; height: 14px; border: 2px solid #3A3010; border-top-color: #C8A532; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Section label ── */
+  /* ── Page ── */
+  .page { max-width: 680px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
   .section-row { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #C8A532; }
   .section-lbl { font-size: 10px; font-weight: 600; color: #8B6E1A; letter-spacing: 2px; text-transform: uppercase; }
 
   /* ── Card ── */
-  .form-card {
-    background: #fff;
-    border-radius: 18px;
-    border: 1px solid #DDD09A;
-    overflow: hidden;
-    box-shadow: 0 4px 24px rgba(180,140,20,0.10);
-  }
-
-  .card-hdr {
-    background: #0F0E06;
-    padding: 1rem 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #221E08;
-  }
-  .card-ttl {
-    color: #C8A532;
-    font-size: 15px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .form-card { background: #fff; border-radius: 18px; border: 1px solid #DDD09A; overflow: hidden; box-shadow: 0 4px 24px rgba(180,140,20,0.10); }
+  .card-hdr { background: #0F0E06; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #221E08; }
+  .card-ttl { color: #C8A532; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
   .card-ttl i { font-size: 18px; }
-
-  .clear-btn {
-    background: transparent;
-    border: 1px solid #2E2C12;
-    border-radius: 8px;
-    padding: 5px 14px;
-    color: #7A6830;
-    font-size: 12px;
-    cursor: pointer;
-    font-family: inherit;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    transition: all 0.15s;
-  }
-  .clear-btn:hover { border-color: #C8A532; color: #C8A532; }
-
-  /* ── Form body ── */
   .card-body { padding: 1.4rem 1.4rem 1.25rem; background: #FDFBF0; }
 
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1.1rem; }
+  /* ── Call number badge ── */
+  .callnum-wrap { position: relative; }
+  .callnum-badge { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #9A8030; background: #F0E8C0; border-radius: 6px; padding: 3px 7px; font-weight: 600; letter-spacing: 0.5px; pointer-events: none; }
 
+  /* ── Urgent banner ── */
+  .urgent-bar { display: flex; align-items: center; justify-content: space-between; background: #1A0A00; border: 1.5px solid #8B2000; border-radius: 12px; padding: 0.75rem 1rem; margin-bottom: 1.1rem; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .urgent-bar.active { background: #3A0A00; border-color: #E03000; box-shadow: 0 0 0 3px rgba(220,50,0,0.18); }
+  .urgent-left { display: flex; align-items: center; gap: 10px; }
+  .urgent-left i { font-size: 20px; color: #E05000; }
+  .urgent-bar.active .urgent-left i { color: #FF4400; }
+  .urgent-label { font-size: 14px; font-weight: 600; color: #C87040; }
+  .urgent-bar.active .urgent-label { color: #FF6030; }
+  .urgent-sub { font-size: 11px; color: #8B5030; margin-top: 1px; }
+  .urgent-bar.active .urgent-sub { color: #C05030; }
+  .toggle { width: 44px; height: 24px; background: #3A2010; border-radius: 12px; position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .urgent-bar.active .toggle { background: #E03000; }
+  .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: #C87040; border-radius: 50%; top: 3px; left: 3px; transition: all 0.2s; }
+  .urgent-bar.active .toggle::after { left: 23px; background: #fff; }
+
+  /* ── Clear btn ── */
+  .clear-btn { background: transparent; border: 1px solid #2E2C12; border-radius: 8px; padding: 5px 14px; color: #7A6830; font-size: 12px; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; transition: all 0.15s; }
+  .clear-btn:hover { border-color: #C8A532; color: #C8A532; }
+
+  /* ── Fields ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1.1rem; }
   .field { margin-bottom: 1.1rem; }
   .field:last-child { margin-bottom: 0; }
-
-  .lbl {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6B5515;
-    margin-bottom: 6px;
-    letter-spacing: 0.2px;
-  }
+  .lbl { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #6B5515; margin-bottom: 6px; }
   .lbl i { font-size: 14px; color: #C8A532; }
   .req { color: #C8A532; }
 
-  input[type=text], input[type=tel], textarea {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid #E0CC80;
-    border-radius: 10px;
-    font-size: 14px;
-    background: #FFFEF5;
-    color: #1A1400;
-    font-family: inherit;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    -webkit-appearance: none;
-    appearance: none;
+  input[type=text], input[type=tel], input[type=number], textarea, select {
+    width: 100%; padding: 11px 14px; border: 1.5px solid #E0CC80; border-radius: 10px;
+    font-size: 14px; background: #FFFEF5; color: #1A1400; font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s; -webkit-appearance: none; appearance: none;
   }
-  input:focus, textarea:focus {
-    outline: none;
-    border-color: #C8A532;
-    box-shadow: 0 0 0 3px rgba(200,165,50,0.16);
-    background: #FFFFFF;
-  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: #C8A532; box-shadow: 0 0 0 3px rgba(200,165,50,0.16); background: #FFFFFF; }
   input::placeholder, textarea::placeholder { color: #C0A860; opacity: 0.7; }
-  textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23C8A532' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; padding-right: 36px;
+  }
+  select:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* ── Location ── */
   .loc-wrap { position: relative; }
   .loc-wrap input { padding-right: 72px; }
-  .map-btn {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #0F0E06;
-    border: none;
-    border-radius: 7px;
-    padding: 6px 10px;
-    color: #C8A532;
-    font-size: 11px;
-    cursor: pointer;
-    font-family: inherit;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    white-space: nowrap;
-    font-weight: 600;
-  }
+  .map-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #0F0E06; border: none; border-radius: 7px; padding: 6px 10px; color: #C8A532; font-size: 11px; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 3px; white-space: nowrap; font-weight: 600; }
   .map-btn:hover { background: #1E1C08; }
 
+  /* ── Section subheader ── */
+  .sub-hdr { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: #8B6E1A; letter-spacing: 1.5px; text-transform: uppercase; margin: 1.2rem 0 0.9rem; }
+  .sub-hdr::before { content: ''; width: 3px; height: 14px; background: #C8A532; border-radius: 2px; }
+  .sub-hdr::after { content: ''; flex: 1; height: 1px; background: #E5D488; opacity: 0.7; }
+
+  /* ── Vehicle info row ── */
+  .vehicle-fields { display: none; }
+  .vehicle-fields.on { display: block; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1.1rem; }
+
+  /* ── Flat tire / lockout chips ── */
+  .tire-opts, .lockout-type { display: none; gap: 8px; margin-bottom: 1.1rem; flex-wrap: wrap; }
+  .tire-opts.on { display: flex; }
+  .lockout-type.on { display: flex; }
+  .chip { padding: 7px 14px; border-radius: 20px; border: 1.5px solid #E0CC80; background: #FFFEF5; color: #6B5515; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .chip.selected { background: #C8A532; border-color: #C8A532; color: #0F0E06; font-weight: 600; }
+  .chip:hover:not(.selected) { border-color: #C8A532; color: #8B6E1A; }
+
+  /* ── Conditional fields ── */
+  .ac-qty { display: none; }
+  .ac-qty.on { display: block; }
+
+  /* ── Save custom btn ── */
+  .save-custom-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #0F0E06; border: 1px solid #3A3010; border-radius: 7px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #C8A532; cursor: pointer; font-size: 14px; padding: 0; transition: all 0.15s; }
+  .save-custom-btn:hover { background: #C8A532; color: #0F0E06; }
+  .save-custom-btn i { font-size: 14px; }
+  /* give inputs room for the + button */
+  #vColor, #vMake, #vModel { padding-right: 44px; }
+
+  /* ── Toast notification ── */
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(20px); background: #0F0E06; color: #C8A532; border: 1px solid #3A3010; border-radius: 10px; padding: 0.6rem 1.2rem; font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   /* ── Divider ── */
-  .divider {
-    height: 1px;
-    background: #E5D488;
-    margin: 1.1rem 0;
-    opacity: 0.6;
-  }
+  .divider { height: 1px; background: #E5D488; margin: 1.1rem 0; opacity: 0.6; }
 
-  /* ── Action buttons ── */
+  /* ── Buttons ── */
   .actions { display: flex; flex-direction: column; gap: 10px; }
-
-  .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    padding: 15px 20px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    width: 100%;
-    font-family: inherit;
-    letter-spacing: 0.2px;
-    transition: all 0.15s;
-  }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 15px 20px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; width: 100%; font-family: inherit; transition: all 0.15s; }
   .btn i { font-size: 19px; }
   .btn:active { transform: scale(0.98); }
-
   .btn-wa { background: #C8A532; color: #0F0E06; }
   .btn-wa:hover { background: #D8B540; }
-
   .btn-int { background: #0F0E06; color: #C8A532; border: 1.5px solid #2E2A10; }
   .btn-int:hover { background: #1C1A08; }
 
-  /* ── Preview panel ── */
-  .preview {
-    background: #0F0E06;
-    border-radius: 14px;
-    padding: 1.1rem 1.25rem;
-    margin-top: 1.1rem;
-    display: none;
-    border: 1px solid #2A2810;
-  }
+  /* ── Preview ── */
+  .preview { background: #0F0E06; border-radius: 14px; padding: 1.1rem 1.25rem; margin-top: 1.1rem; display: none; border: 1px solid #2A2810; }
   .preview.on { display: block; }
-  .preview-lbl {
-    font-size: 10px;
-    color: #6A5A20;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-  }
+  .preview-lbl { font-size: 10px; color: #6A5A20; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
   .preview-lbl::after { content: ''; flex: 1; height: 1px; background: #2A2810; }
-  .preview-txt {
-    font-size: 12.5px;
-    color: #E8D98A;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    white-space: pre-wrap;
-    line-height: 1.7;
-  }
+  .preview-txt { font-size: 12.5px; color: #E8D98A; font-family: 'SF Mono','Fira Code',monospace; white-space: pre-wrap; line-height: 1.7; }
 
   /* ── Responsive ── */
   @media (max-width: 520px) {
     .page { padding: 1rem 0.75rem 2rem; }
-    .grid2 { grid-template-columns: 1fr; gap: 0; }
-    .grid2 > div:first-child { margin-bottom: 1.1rem; }
+    .grid2, .grid3 { grid-template-columns: 1fr; gap: 0; }
+    .grid2 > div:not(:last-child), .grid3 > div:not(:last-child) { margin-bottom: 1.1rem; }
     .header { padding: 0.9rem 1rem; }
     .logo-badge { width: 48px; height: 48px; }
     .brand-name { font-size: 19px; }
@@ -228,6 +152,8 @@
 </style>
 </head>
 <body>
+
+<div class="toast" id="toast"></div>
 
 <div class="header">
   <div class="logo-badge"><img src="https://i.ibb.co/Kc2B52nS/download-1.png" alt="Chaverim Bergen County logo" /></div>
@@ -246,20 +172,38 @@
 
   <div class="form-card">
     <div class="card-hdr">
-      <div class="card-ttl">
-        <i class="ti ti-alert-triangle"></i>
-        Emergency Dispatch Form
-      </div>
-      <button class="clear-btn" onclick="clearForm()">
-        <i class="ti ti-refresh" style="font-size:13px;"></i> Clear Call
-      </button>
+      <div class="card-ttl"><i class="ti ti-alert-triangle"></i> Emergency Dispatch Form</div>
+      <button class="clear-btn" onclick="clearForm()"><i class="ti ti-refresh" style="font-size:13px;"></i> Clear Call</button>
     </div>
 
     <div class="card-body">
+
+      <!-- DB loading indicator -->
+      <div class="db-loading" id="dbLoading">
+        <div class="spinner"></div>
+        <span>Loading data from database...</span>
+      </div>
+
+      <!-- Urgent toggle -->
+      <div class="urgent-bar" id="urgentBar" onclick="toggleUrgent()">
+        <div class="urgent-left">
+          <i class="ti ti-siren"></i>
+          <div>
+            <div class="urgent-label">URGENT</div>
+            <div class="urgent-sub">Mark this call as high priority</div>
+          </div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+
+      <!-- Call # + Phone -->
       <div class="grid2">
         <div>
           <div class="lbl"><i class="ti ti-hash"></i> Call # <span class="req">*</span></div>
-          <input type="text" id="callNum" placeholder="Enter call number" />
+          <div class="callnum-wrap">
+            <input type="text" id="callNum" placeholder="Loading..." />
+            <span class="callnum-badge" id="callNumBadge">AUTO</span>
+          </div>
         </div>
         <div>
           <div class="lbl"><i class="ti ti-phone"></i> Phone</div>
@@ -267,35 +211,136 @@
         </div>
       </div>
 
+      <!-- Location -->
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
         <div class="loc-wrap">
           <input type="text" id="location" placeholder="123 Main St, Edison, NJ" />
-          <button class="map-btn" onclick="verifyLocation()">
-            <i class="ti ti-map-pin" style="font-size:12px;"></i> Map
-          </button>
+          <button class="map-btn" onclick="verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
         </div>
       </div>
 
+      <!-- Caller name -->
       <div class="field">
         <div class="lbl"><i class="ti ti-user"></i> Caller name</div>
         <input type="text" id="callerName" placeholder="John Doe" />
       </div>
 
+      <!-- Nature of emergency -->
       <div class="field">
-        <div class="lbl"><i class="ti ti-file-description"></i> Nature of emergency <span class="req">*</span></div>
-        <textarea id="nature" placeholder="Flat tire, lockout, jump start, Genesis GV80, etc."></textarea>
+        <div class="lbl"><i class="ti ti-list"></i> Nature of emergency <span class="req">*</span></div>
+        <select id="natureType" onchange="onNatureChange()">
+          <option value="">— Select type —</option>
+          <optgroup label="Vehicle">
+            <option value="flat_tire">Flat Tire</option>
+            <option value="boost">Boost / Jump Start</option>
+            <option value="out_of_gas">Out of Gas</option>
+            <option value="lockout">Lockout</option>
+            <option value="vehicle_stalled">Vehicle Stalled</option>
+            <option value="vehicle_pullout">Vehicle Pullout</option>
+          </optgroup>
+          <optgroup label="Community / Home">
+            <option value="flood">Flood (House)</option>
+            <option value="heater">Heater Request</option>
+            <option value="ac">AC Request</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="other">Other</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- Custom nature field (shown when "Other" selected) -->
+      <div class="ac-qty" id="customNatureWrap">
+        <div class="field">
+          <div class="lbl"><i class="ti ti-pencil"></i> Describe the emergency <span class="req">*</span></div>
+          <input type="text" id="customNature" placeholder="Describe the nature of the emergency..." />
+        </div>
+      </div>
+
+      <!-- Flat tire: spare chips -->
+      <div class="tire-opts" id="tireOpts">
+        <div class="lbl" style="width:100%;margin-bottom:4px;"><i class="ti ti-tools"></i> Spare tire?</div>
+        <button class="chip" onclick="selectChip(event,'spare','with_spare','With spare')">With spare</button>
+        <button class="chip" onclick="selectChip(event,'spare','no_spare','No spare')">No spare</button>
+        <button class="chip" onclick="selectChip(event,'spare','no_spare_needs_ez','No spare — needs EZ spare')">No spare, needs EZ spare</button>
+      </div>
+
+      <!-- Lockout: vehicle or house -->
+      <div class="lockout-type" id="lockoutType">
+        <div class="lbl" style="width:100%;margin-bottom:4px;"><i class="ti ti-key"></i> Lockout type</div>
+        <button class="chip" onclick="selectChip(event,'lockout_type','vehicle_lockout','Vehicle lockout')">Vehicle</button>
+        <button class="chip" onclick="selectChip(event,'lockout_type','house_lockout','House lockout')">House</button>
+      </div>
+
+      <!-- Flood: equipment needed -->
+      <div class="ac-qty" id="floodEquip">
+        <div class="field">
+          <div class="lbl"><i class="ti ti-tools"></i> Equipment needed <span style="font-weight:400;color:#9A8050;">(if any)</span></div>
+          <input type="text" id="floodEquipment" placeholder="e.g. pumps, wet vac, towels..." />
+        </div>
+      </div>
+
+      <!-- Quantity (heater / AC) -->
+      <div class="ac-qty" id="qtyField">
+        <div class="field">
+          <div class="lbl"><i class="ti ti-stack"></i> <span id="qtyLabel">Quantity needed</span></div>
+          <input type="number" id="acQuantity" placeholder="How many?" min="1" max="99" />
+        </div>
+      </div>
+
+      <!-- Vehicle details -->
+      <div class="vehicle-fields" id="vehicleFields">
+        <div class="sub-hdr">Vehicle info</div>
+        <div class="grid3">
+          <div>
+            <div class="lbl"><i class="ti ti-calendar"></i> Year</div>
+            <input type="text" id="vYear" placeholder="2022" maxlength="4" />
+          </div>
+          <div>
+            <div class="lbl"><i class="ti ti-palette"></i> Color</div>
+            <div style="position:relative;">
+              <input type="text" id="vColor" placeholder="Silver, Black..." list="colorList" autocomplete="off" />
+              <datalist id="colorList"></datalist>
+              <button class="save-custom-btn" onclick="saveCustomColor()" title="Save this color to database">
+                <i class="ti ti-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div>
+            <div class="lbl"><i class="ti ti-car"></i> Make</div>
+            <div style="position:relative;">
+              <input type="text" id="vMake" placeholder="Genesis, Toyota..." list="makeList" autocomplete="off" oninput="onMakeInput()" />
+              <datalist id="makeList"></datalist>
+              <button class="save-custom-btn" onclick="saveCustomMake()" title="Save this make to database">
+                <i class="ti ti-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="lbl"><i class="ti ti-car-suv"></i> Model</div>
+          <div style="position:relative;">
+            <input type="text" id="vModel" placeholder="GV80, Camry..." list="modelList" autocomplete="off" />
+            <datalist id="modelList"></datalist>
+            <button class="save-custom-btn" onclick="saveCustomModel()" title="Save this model to database">
+              <i class="ti ti-plus"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional notes -->
+      <div class="field">
+        <div class="lbl"><i class="ti ti-notes"></i> Additional notes</div>
+        <textarea id="notes" placeholder="Any extra details..."></textarea>
       </div>
 
       <div class="divider"></div>
 
       <div class="actions">
-        <button class="btn btn-wa" onclick="dispatchWhatsApp()">
-          <i class="ti ti-message-circle"></i> Dispatch via WhatsApp
-        </button>
-        <button class="btn btn-int" onclick="dispatchInterstate()">
-          <i class="ti ti-car"></i> Dispatch to Interstate
-        </button>
+        <button class="btn btn-wa" onclick="dispatchWhatsApp()"><i class="ti ti-message-circle"></i> Dispatch via WhatsApp</button>
+        <button class="btn btn-int" onclick="dispatchInterstate()"><i class="ti ti-car"></i> Dispatch to Interstate</button>
       </div>
     </div>
   </div>
@@ -306,39 +351,415 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBLbU8jdXP7UEtkndbpcM1I3EeZcChtMpU",
+  authDomain: "bergen-county-dispatch-form.firebaseapp.com",
+  databaseURL: "https://bergen-county-dispatch-form-default-rtdb.firebaseio.com",
+  projectId: "bergen-county-dispatch-form",
+  storageBucket: "bergen-county-dispatch-form.firebasestorage.app",
+  messagingSenderId: "941729771971",
+  appId: "1:941729771971:web:3e173a9dbd279bc8140d76"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ── State ──
+window.isUrgent = false;
+window.chips = {};
+window.makesData = {};
+
+// ── API Ninjas key — replace with your new key after regenerating ──
+const API_NINJAS_KEY = 'YOUR_NEW_API_NINJAS_KEY_HERE';
+
+// ── Fetch makes from API Ninjas ──
+async function fetchMakesFromAPI() {
+  const res = await fetch('https://api.api-ninjas.com/v1/carmakes', {
+    headers: { 'X-Api-Key': API_NINJAS_KEY }
+  });
+  if (!res.ok) throw new Error('API Ninjas makes fetch failed');
+  const data = await res.json();
+  // Returns array of strings e.g. ["Toyota","Honda",...]
+  return data;
+}
+
+// ── Fetch models from API Ninjas for a given make ──
+async function fetchModelsFromAPI(make) {
+  const res = await fetch('https://api.api-ninjas.com/v1/carmodels?make=' + encodeURIComponent(make), {
+    headers: { 'X-Api-Key': API_NINJAS_KEY }
+  });
+  if (!res.ok) throw new Error('API Ninjas models fetch failed');
+  const data = await res.json();
+  // Returns array of strings
+  return data;
+}
+
+// ── Load all data on startup ──
+async function loadAll() {
+  try {
+    // 1. Last call number
+    const callSnap = await get(ref(db, 'meta/lastCallNumber'));
+    const lastNum = callSnap.exists() ? callSnap.val() : 1000;
+    const nextNum = lastNum + 1;
+    document.getElementById('callNum').value = nextNum;
+    document.getElementById('callNum').dataset.auto = nextNum;
+
+    // 2. Colors
+    const colorsSnap = await get(ref(db, 'colors'));
+    var colorList = [];
+    if (colorsSnap.exists()) {
+      colorList = colorsSnap.val();
+      if (!Array.isArray(colorList)) colorList = Object.values(colorList);
+    } else {
+      colorList = ['Beige','Black','Blue','Brown','Gold','Gray','Green','Maroon','Navy','Orange','Pink','Purple','Red','Silver','Tan','White','Yellow'];
+      await set(ref(db, 'colors'), colorList);
+    }
+    populateColors(colorList);
+
+    // 3. Makes — try API Ninjas first, fall back to Firebase, then hardcoded defaults
+    try {
+      const apiMakes = await fetchMakesFromAPI();
+      if (apiMakes && apiMakes.length > 0) {
+        // Build makesData object from API (models loaded lazily on make input)
+        window.makesData = {};
+        apiMakes.forEach(function(m) { window.makesData[m] = []; });
+        // Merge any custom makes saved in Firebase
+        const fbMakesSnap = await get(ref(db, 'makes'));
+        if (fbMakesSnap.exists()) {
+          const fbMakes = fbMakesSnap.val();
+          Object.keys(fbMakes).forEach(function(m) {
+            if (!window.makesData[m]) window.makesData[m] = fbMakes[m];
+          });
+        }
+        populateMakes(window.makesData);
+        showToast('\u2713 ' + apiMakes.length + ' makes loaded');
+      }
+    } catch(apiErr) {
+      console.warn('API Ninjas unavailable, using Firebase/defaults:', apiErr);
+      // Fall back to Firebase
+      const makesSnap = await get(ref(db, 'makes'));
+      if (makesSnap.exists()) {
+        window.makesData = makesSnap.val();
+        populateMakes(window.makesData);
+      } else {
+        const defaultMakes = {
+          "Acura":["ILX","MDX","RDX","TLX"],
+          "BMW":["3 Series","5 Series","X3","X5"],
+          "Chevrolet":["Equinox","Malibu","Silverado","Tahoe","Traverse"],
+          "Ford":["Bronco","Edge","Escape","Explorer","F-150","Mustang"],
+          "Genesis":["G70","G80","G90","GV70","GV80"],
+          "Honda":["Accord","CR-V","HR-V","Odyssey","Pilot"],
+          "Hyundai":["Elantra","Palisade","Santa Fe","Sonata","Tucson"],
+          "Jeep":["Cherokee","Grand Cherokee","Wrangler"],
+          "Kia":["Carnival","Sorento","Sportage","Telluride"],
+          "Lexus":["ES","GX","NX","RX"],
+          "Mercedes-Benz":["C-Class","E-Class","GLE","GLS","Sprinter"],
+          "Nissan":["Altima","Murano","Pathfinder","Rogue"],
+          "Tesla":["Model 3","Model S","Model X","Model Y"],
+          "Toyota":["4Runner","Camry","Corolla","Highlander","RAV4","Sienna","Tacoma"],
+          "Other":["Other"]
+        };
+        await set(ref(db, 'makes'), defaultMakes);
+        window.makesData = defaultMakes;
+        populateMakes(defaultMakes);
+      }
+    }
+
+    // 3. Custom natures (from DB, merged with built-in)
+    const naturesSnap = await get(ref(db, 'customNatures'));
+    if (naturesSnap.exists()) {
+      const customNatures = naturesSnap.val(); // array or object
+      const sel = document.getElementById('natureType');
+      const customGroup = document.createElement('optgroup');
+      customGroup.label = 'Custom';
+      const arr = Array.isArray(customNatures) ? customNatures : Object.values(customNatures);
+      arr.forEach(function(n) {
+        var opt = document.createElement('option');
+        opt.value = 'custom_' + n.toLowerCase().replace(/\s+/g,'_');
+        opt.textContent = n;
+        customGroup.appendChild(opt);
+      });
+      if (customGroup.children.length > 0) {
+        // Insert before "Other" optgroup
+        const otherGroup = sel.querySelector('optgroup[label="Other"]');
+        sel.insertBefore(customGroup, otherGroup);
+      }
+    }
+
+    document.getElementById('dbLoading').classList.add('hidden');
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    document.getElementById('dbLoading').innerHTML = '<i class="ti ti-wifi-off" style="color:#E05000;font-size:16px;"></i><span style="color:#C87040;">Could not connect to database — using defaults</span>';
+    // Set fallback call number
+    document.getElementById('callNum').value = '';
+    document.getElementById('callNum').placeholder = 'Enter manually';
+    setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
+  }
+}
+
+// ── Toast ──
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+// ── Populate color datalist ──
+function populateColors(colors) {
+  var dl = document.getElementById('colorList');
+  dl.innerHTML = '';
+  colors.forEach(function(c) {
+    var opt = document.createElement('option'); opt.value = c; dl.appendChild(opt);
+  });
+}
+
+// ── Populate make datalist ──
+function populateMakes(makesObj) {
+  var dl = document.getElementById('makeList');
+  dl.innerHTML = '';
+  Object.keys(makesObj).sort().forEach(function(m) {
+    var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+  });
+}
+
+// ── On make input → fetch & populate model datalist ──
+window.onMakeInput = async function() {
+  var make = document.getElementById('vMake').value.trim();
+  var dl = document.getElementById('modelList');
+  dl.innerHTML = '';
+  document.getElementById('vModel').value = '';
+  if (!make) return;
+
+  // Check cache first
+  if (window.makesData[make] && window.makesData[make].length > 0) {
+    var models = window.makesData[make];
+    if (models.models) models = models.models;
+    models.forEach(function(m) {
+      var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+    });
+    return;
+  }
+
+  // Fetch from API Ninjas
+  try {
+    const apiModels = await fetchModelsFromAPI(make);
+    if (apiModels && apiModels.length > 0) {
+      window.makesData[make] = apiModels;
+      apiModels.forEach(function(m) {
+        var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+      });
+    }
+  } catch(e) {
+    console.warn('Could not fetch models from API Ninjas:', e);
+  }
+};
+
+// ── Save custom color ──
+window.saveCustomColor = async function() {
+  var color = document.getElementById('vColor').value.trim();
+  if (!color) { showToast('Enter a color first'); return; }
+  try {
+    const snap = await get(ref(db, 'colors'));
+    var colors = snap.exists() ? snap.val() : [];
+    if (!Array.isArray(colors)) colors = Object.values(colors);
+    if (colors.map(function(c){ return c.toLowerCase(); }).indexOf(color.toLowerCase()) !== -1) {
+      showToast(color + ' already saved'); return;
+    }
+    colors.push(color);
+    colors.sort();
+    await set(ref(db, 'colors'), colors);
+    populateColors(colors);
+    showToast('\u2713 Saved "' + color + '"');
+  } catch(e) { showToast('Could not save — check connection'); }
+};
+
+// ── Save custom make ──
+window.saveCustomMake = async function() {
+  var make = document.getElementById('vMake').value.trim();
+  if (!make) { showToast('Enter a make first'); return; }
+  try {
+    const snap = await get(ref(db, 'makes'));
+    var makes = snap.exists() ? snap.val() : {};
+    if (makes[make]) { showToast(make + ' already saved'); return; }
+    makes[make] = [];
+    await set(ref(db, 'makes'), makes);
+    window.makesData = makes;
+    populateMakes(makes);
+    showToast('\u2713 Saved make "' + make + '"');
+  } catch(e) { showToast('Could not save — check connection'); }
+};
+
+// ── Save custom model ──
+window.saveCustomModel = async function() {
+  var make = document.getElementById('vMake').value.trim();
+  var model = document.getElementById('vModel').value.trim();
+  if (!model) { showToast('Enter a model first'); return; }
+  if (!make) { showToast('Enter a make first'); return; }
+  try {
+    const snap = await get(ref(db, 'makes/' + make));
+    var models = snap.exists() ? snap.val() : [];
+    if (models.models) models = models.models;
+    if (!Array.isArray(models)) models = [];
+    if (models.map(function(m){ return m.toLowerCase(); }).indexOf(model.toLowerCase()) !== -1) {
+      showToast(model + ' already saved'); return;
+    }
+    models.push(model);
+    models.sort();
+    await set(ref(db, 'makes/' + make), models);
+    window.makesData[make] = models;
+    window.onMakeInput(); // refresh model datalist
+    showToast('\u2713 Saved model "' + model + '"');
+  } catch(e) { showToast('Could not save — check connection'); }
+};
+
+// ── Urgent ──
+window.toggleUrgent = function() {
+  window.isUrgent = !window.isUrgent;
+  document.getElementById('urgentBar').classList.toggle('active', window.isUrgent);
+};
+
+// ── Nature change ──
+var VEHICLE_NATURES = ['flat_tire','boost','out_of_gas','lockout','vehicle_stalled','vehicle_pullout'];
+var QTY_NATURES = { heater: 'Heater units', ac: 'AC units' };
+
+window.onNatureChange = function() {
+  var val = document.getElementById('natureType').value;
+  var isVeh = VEHICLE_NATURES.indexOf(val) !== -1;
+
+  document.getElementById('vehicleFields').classList.toggle('on', isVeh);
+
+  // Flat tire chips
+  var showTire = val === 'flat_tire';
+  document.getElementById('tireOpts').style.display = showTire ? 'flex' : '';
+  document.getElementById('tireOpts').classList.toggle('on', showTire);
+
+  // Lockout type chips
+  var showLock = val === 'lockout';
+  document.getElementById('lockoutType').style.display = showLock ? 'flex' : '';
+  document.getElementById('lockoutType').classList.toggle('on', showLock);
+
+  // Flood equipment
+  var showFlood = val === 'flood';
+  document.getElementById('floodEquip').classList.toggle('on', showFlood);
+  if (!showFlood) document.getElementById('floodEquipment').value = '';
+
+  // Qty field
+  var showQty = QTY_NATURES.hasOwnProperty(val);
+  document.getElementById('qtyField').classList.toggle('on', showQty);
+  if (showQty) document.getElementById('qtyLabel').textContent = QTY_NATURES[val];
+  else document.getElementById('acQuantity').value = '';
+
+  // Custom nature text
+  var showCustom = val === 'other';
+  document.getElementById('customNatureWrap').classList.toggle('on', showCustom);
+  if (!showCustom) document.getElementById('customNature').value = '';
+
+  window.chips = {};
+  document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
+};
+
+// ── Chip select ──
+window.selectChip = function(evt, group, id, label) {
+  window.chips[group] = { id: id, label: label };
+  var parent = evt.target.parentElement;
+  parent.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
+  evt.target.classList.add('selected');
+};
+
+// ── Build nature string ──
+function getNatureLabel() {
+  var sel = document.getElementById('natureType');
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return '';
+  if (opt.value === 'other') return document.getElementById('customNature').value.trim() || 'Other';
+  return opt.text;
+}
+
+function buildNatureString() {
+  var val = document.getElementById('natureType').value;
+  var label = getNatureLabel();
+  var parts = [label];
+
+  if (val === 'flat_tire' && window.chips['spare']) parts.push(window.chips['spare'].label);
+  if (val === 'lockout' && window.chips['lockout_type']) parts.push(window.chips['lockout_type'].label);
+  if (val === 'flood') {
+    var equip = document.getElementById('floodEquipment').value.trim();
+    if (equip) parts.push('Equipment: ' + equip);
+  }
+  if (QTY_NATURES.hasOwnProperty(val)) {
+    var qty = document.getElementById('acQuantity').value;
+    if (qty) parts.push('x' + qty);
+  }
+  if (VEHICLE_NATURES.indexOf(val) !== -1) {
+    var yr = document.getElementById('vYear').value.trim();
+    var col = document.getElementById('vColor').value.trim();
+    var make = document.getElementById('vMake').value.trim();
+    var model = document.getElementById('vModel').value.trim();    var veh = [yr, col, make, model].filter(Boolean).join(' ');
+    if (veh) parts.push(veh);
+  }
+  var notes = document.getElementById('notes').value.trim();
+  if (notes) parts.push(notes);
+  return parts.filter(Boolean).join(' — ');
+}
+
 function getFormData() {
   return {
-    callNum: document.getElementById('callNum').value,
-    phone: document.getElementById('phone').value,
-    location: document.getElementById('location').value,
-    name: document.getElementById('callerName').value,
-    nature: document.getElementById('nature').value
+    callNum: document.getElementById('callNum').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    location: document.getElementById('location').value.trim(),
+    name: document.getElementById('callerName').value.trim(),
+    nature: buildNatureString(),
+    urgent: window.isUrgent
   };
 }
 
+// ── Save call number to Firebase after dispatch ──
+async function saveCallNumber(num) {
+  try {
+    await set(ref(db, 'meta/lastCallNumber'), parseInt(num));
+  } catch(e) { console.warn('Could not save call number:', e); }
+}
+
 function buildWA(d) {
-  return [
-    'Call#:' + d.callNum,
-    'Location:' + d.location,
-    'Phone:' + d.phone,
-    'Name:' + d.name,
-    'Nature:' + d.nature,
-    '',
-    'https://form.jotform.com/212776438913868',
-    'SAFETY FIRST!  Please remember to wear your Chaverim vest.',
-    'Please remember to have the caller sign the waiver.'
-  ].join('\n');
+  var u = '\uD83D\uDEA8'; // 🚨
+  var lines = [];
+  if (d.urgent) lines.push(u + ' URGENT CALL ' + u, '');
+  lines.push('Call#:' + d.callNum);
+  lines.push('');
+  lines.push('Location:' + d.location);
+  lines.push('');
+  lines.push('Phone:' + d.phone);
+  lines.push('');
+  lines.push('Name:' + d.name);
+  lines.push('');
+  lines.push('Nature:' + d.nature);
+  lines.push('');
+  lines.push('https://form.jotform.com/212776438913868');
+  lines.push('');
+  lines.push('SAFETY FIRST!  Please remember to wear your Chaverim vest.');
+  lines.push('Please remember to have the caller sign the waiver.');
+  return lines.join('\n');
 }
 
 function buildInt(d) {
-  return [
-    'New Call (BC)',
-    'Location: ' + d.location,
-    'Phone: ' + d.phone,
-    'Name: ' + d.name,
-    'Nature: ' + d.nature
-  ].join('\n');
+  var u = '\uD83D\uDEA8'; // 🚨
+  var lines = [];
+  if (d.urgent) lines.push(u + ' URGENT ' + u, '');
+  lines.push('New Call (BC)');
+  lines.push('');
+  lines.push('Location: ' + d.location);
+  lines.push('');
+  lines.push('Phone: ' + d.phone);
+  lines.push('');
+  lines.push('Name: ' + d.name);
+  lines.push('');
+  lines.push('Nature: ' + d.nature);
+  return lines.join('\n');
 }
 
 function showPreview(txt) {
@@ -346,39 +767,59 @@ function showPreview(txt) {
   document.getElementById('preview').classList.add('on');
 }
 
-function dispatchWhatsApp() {
+window.dispatchWhatsApp = async function() {
   var d = getFormData();
-  if (!d.callNum || !d.location || !d.nature) {
-    alert('Please fill in Call #, Location, and Nature of Emergency.');
-    return;
-  }
+  if (!d.callNum || !d.location || !d.nature) { alert('Please fill in Call #, Location, and Nature of Emergency.'); return; }
   var msg = buildWA(d);
   showPreview(msg);
+  await saveCallNumber(d.callNum);
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
-}
+};
 
-function dispatchInterstate() {
+window.dispatchInterstate = async function() {
   var d = getFormData();
-  if (!d.location || !d.nature) {
-    alert('Please fill in Location and Nature of Emergency.');
-    return;
-  }
+  if (!d.location || !d.nature) { alert('Please fill in Location and Nature of Emergency.'); return; }
   var msg = buildInt(d);
   showPreview(msg);
+  await saveCallNumber(d.callNum);
   window.open('https://wa.me/18458524357?text=' + encodeURIComponent(msg), '_blank');
-}
+};
 
-function verifyLocation() {
+window.verifyLocation = function() {
   var loc = document.getElementById('location').value;
   if (loc) window.open('https://maps.google.com/?q=' + encodeURIComponent(loc), '_blank');
-}
+};
 
-function clearForm() {
-  ['callNum', 'phone', 'location', 'callerName', 'nature'].forEach(function(id) {
-    document.getElementById(id).value = '';
+window.clearForm = async function() {
+  ['phone','location','callerName','notes','vYear','vColor','vMake','vModel','acQuantity','floodEquipment','customNature'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('natureType').value = '';
+  // clear model datalist
+  document.getElementById('modelList').innerHTML = '';
+
+  window.isUrgent = false;
+  window.chips = {};
+  document.getElementById('urgentBar').classList.remove('active');
+  document.getElementById('vehicleFields').classList.remove('on');
+  document.getElementById('tireOpts').classList.remove('on');
+  document.getElementById('lockoutType').classList.remove('on');
+  document.getElementById('floodEquip').classList.remove('on');
+  document.getElementById('qtyField').classList.remove('on');
+  document.getElementById('customNatureWrap').classList.remove('on');
+  document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
   document.getElementById('preview').classList.remove('on');
-}
+
+  // Load next call number fresh
+  try {
+    const snap = await get(ref(db, 'meta/lastCallNumber'));
+    const last = snap.exists() ? snap.val() : 1000;
+    document.getElementById('callNum').value = last + 1;
+  } catch(e) { document.getElementById('callNum').value = ''; }
+};
+
+// ── Init ──
+loadAll();
 </script>
 </body>
 </html>
