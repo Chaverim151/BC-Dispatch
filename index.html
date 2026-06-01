@@ -878,7 +878,7 @@ function buildNatureString() {
   }
   var notes = document.getElementById('notes').value.trim();
   if (notes) parts.push(notes);
-  return parts.filter(Boolean).join(' — ');
+  return parts.filter(Boolean).join(' | ');
 }
 
 function getFormData() {
