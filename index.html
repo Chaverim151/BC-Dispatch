@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Chaverim Bergen County — Emergency Dispatch</title>
+<link rel="icon" type="image/png" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
+<link rel="apple-touch-icon" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -254,6 +256,7 @@
         </div>
       </div>
 
+
       <!-- Location -->
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
@@ -391,9 +394,10 @@
               <img id="makeLogo" src="" alt="" />
             </div>
             <div class="inp-wrap has-save" style="flex:1;">
-              <input type="text" id="vMake" placeholder="Genesis, Toyota..." list="makeList" autocomplete="off" oninput="onMakeInput()" />
-              <datalist id="makeList"></datalist>
-              <button class="field-clear" onclick="clearField('vMake');updateMakeLogo('');" tabindex="-1">&times;</button>
+              <select id="vMake" onchange="onMakeChange()" style="padding-right:76px;">
+                <option value="">— Select make —</option>
+              </select>
+              <button class="field-clear" onclick="clearMake()" tabindex="-1">&times;</button>
               <button class="save-custom-btn" onclick="saveCustomMake()" title="Save this make"><i class="ti ti-plus"></i></button>
             </div>
           </div>
@@ -402,8 +406,9 @@
         <div class="field">
           <div class="lbl"><i class="ti ti-car-suv"></i> Model</div>
           <div class="inp-wrap has-save">
-            <input type="text" id="vModel" placeholder="GV80, Camry..." list="modelList" autocomplete="off" />
-            <datalist id="modelList"></datalist>
+            <select id="vModel" disabled style="padding-right:76px;">
+              <option value="">— Select model —</option>
+            </select>
             <button class="field-clear" onclick="clearField('vModel')" tabindex="-1">&times;</button>
             <button class="save-custom-btn" onclick="saveCustomModel()" title="Save this model"><i class="ti ti-plus"></i></button>
           </div>
@@ -724,20 +729,44 @@ function updateMakeLogo(make) {
   }
 }
 
-// ── On make input → populate model datalist from Firebase cache ──
-window.onMakeInput = function() {
-  var make = document.getElementById('vMake').value.trim();
-  var dl = document.getElementById('modelList');
-  dl.innerHTML = '';
-  document.getElementById('vModel').value = '';
+// ── Populate make select ──
+function populateMakes(makesObj) {
+  var sel = document.getElementById('vMake');
+  var current = sel.value;
+  sel.innerHTML = '<option value="">— Select make —</option>';
+  Object.keys(makesObj).sort().forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
+// ── On make change → populate model select ──
+window.onMakeChange = function() {
+  var make = document.getElementById('vMake').value;
+  var modelSel = document.getElementById('vModel');
+  modelSel.innerHTML = '<option value="">— Select model —</option>';
+  modelSel.disabled = !make;
   updateMakeLogo(make);
   if (!make || !window.makesData[make]) return;
   var models = window.makesData[make];
   if (models.models) models = models.models;
   if (!Array.isArray(models)) return;
   models.forEach(function(m) {
-    var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+    var opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    modelSel.appendChild(opt);
   });
+};
+
+// ── Clear make + model ──
+window.clearMake = function() {
+  document.getElementById('vMake').value = '';
+  var modelSel = document.getElementById('vModel');
+  modelSel.innerHTML = '<option value="">— Select model —</option>';
+  modelSel.disabled = true;
+  updateMakeLogo('');
 };
 
 // ── Save custom color ──
@@ -761,16 +790,18 @@ window.saveCustomColor = async function() {
 
 // ── Save custom make ──
 window.saveCustomMake = async function() {
-  var make = document.getElementById('vMake').value.trim();
-  if (!make) { showToast('Enter a make first'); return; }
+  var make = prompt('Enter new make name to save:');
+  if (!make) return;
+  make = make.trim();
   try {
     const snap = await get(ref(db, 'makes'));
     var makes = snap.exists() ? snap.val() : {};
     if (makes[make]) { showToast(make + ' already saved'); return; }
     makes[make] = [];
     await set(ref(db, 'makes'), makes);
-    window.makesData = makes;
-    populateMakes(makes);
+    window.makesData[make] = [];
+    populateMakes(window.makesData);
+    document.getElementById('vMake').value = make;
     showToast('\u2713 Saved make "' + make + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -778,9 +809,10 @@ window.saveCustomMake = async function() {
 // ── Save custom model ──
 window.saveCustomModel = async function() {
   var make = document.getElementById('vMake').value.trim();
-  var model = document.getElementById('vModel').value.trim();
-  if (!model) { showToast('Enter a model first'); return; }
-  if (!make) { showToast('Enter a make first'); return; }
+  if (!make) { showToast('Select a make first'); return; }
+  var model = prompt('Enter new model name to save under ' + make + ':');
+  if (!model) return;
+  model = model.trim();
   try {
     const snap = await get(ref(db, 'makes/' + make));
     var models = snap.exists() ? snap.val() : [];
@@ -793,7 +825,8 @@ window.saveCustomModel = async function() {
     models.sort();
     await set(ref(db, 'makes/' + make), models);
     window.makesData[make] = models;
-    window.onMakeInput(); // refresh model datalist
+    window.onMakeChange();
+    document.getElementById('vModel').value = model;
     showToast('\u2713 Saved model "' + model + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -1000,7 +1033,11 @@ function showPreview(txt) {
 
 window.dispatchWhatsApp = async function() {
   var d = getFormData();
-  if (!d.callNum || !d.location || !d.nature) { alert('Please fill in Call #, Location, and Nature of Call.'); return; }
+  if (!d.urgent) {
+    if (!d.callNum) { alert('Please enter a Call #.'); return; }
+    if (!d.location) { alert('Please enter a Location.'); return; }
+    if (!d.nature) { alert('Please select a Nature of Call.'); return; }
+  }
   var msg = buildWA(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
@@ -1009,7 +1046,10 @@ window.dispatchWhatsApp = async function() {
 
 window.dispatchInterstate = async function() {
   var d = getFormData();
-  if (!d.location || !d.nature) { alert('Please fill in Location and Nature of Call.'); return; }
+  if (!d.urgent) {
+    if (!d.location) { alert('Please enter a Location.'); return; }
+    if (!d.nature) { alert('Please select a Nature of Call.'); return; }
+  }
   var msg = buildInt(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
@@ -1025,7 +1065,11 @@ window.clearForm = async function() {
   ['phone','location','callerName','notes','vYear','vColor','vMake','vModel','acQuantity','floodEquipment','customNature'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
-  document.getElementById('makeLogoWrap').style.display = 'none';
+  document.getElementById('vMake').value = '';
+  var modelSel = document.getElementById('vModel');
+  modelSel.innerHTML = '<option value="">— Select model —</option>';
+  modelSel.disabled = true;
+  updateMakeLogo('');
   document.getElementById('natureType').value = '';
   // clear model datalist
   document.getElementById('modelList').innerHTML = '';
