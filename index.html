@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- saved from url=(0065)file:///Users/shmueleidelman/Documents/New%20MC%20site/index.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chaverim Bergen County — Emergency Dispatch</title>
-<link rel="icon" type="image/png" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
-<link rel="apple-touch-icon" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<link rel="stylesheet" href="./index_files/tabler-icons.min.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F2ECD8; min-height: 100vh; }
@@ -116,30 +114,6 @@
   .make-logo-wrap { width: 48px; height: 48px; background: #fff; border: 1.5px solid #E0CC80; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; padding: 4px; }
   .make-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
 
-  /* ── Paste Maps button ── */
-  .paste-maps-btn { margin-top: 6px; display: flex; align-items: center; gap: 6px; background: transparent; border: 1.5px dashed #C8A532; border-radius: 8px; padding: 6px 12px; color: #8B6E1A; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; width: 100%; justify-content: center; }
-  .paste-maps-btn:hover { background: #F5ECC0; border-style: solid; color: #6B5515; }
-  .paste-maps-btn i { font-size: 14px; }
-
-  /* ── Trapped modal ── */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10,9,3,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 1.25rem; backdrop-filter: blur(4px); }
-  .modal-overlay.on { display: flex; }
-  .modal { background: #FDFBF0; border-radius: 18px; border: 1px solid #DDD09A; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); overflow: hidden; animation: slideUp 0.2s ease; }
-  @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-  .modal-hdr { background: #0F0E06; padding: 1rem 1.25rem; border-bottom: 1px solid #2A2810; display: flex; align-items: center; gap: 10px; }
-  .modal-hdr i { font-size: 22px; color: #E05000; }
-  .modal-hdr-txt { color: #C8A532; font-size: 15px; font-weight: 600; }
-  .modal-body { padding: 1.25rem; text-align: center; }
-  .modal-question { font-size: 16px; font-weight: 600; color: #1A1400; margin-bottom: 6px; }
-  .modal-sub { font-size: 13px; color: #8B6E1A; margin-bottom: 1.25rem; }
-  .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .modal-btn { padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: all 0.15s; }
-  .modal-btn:active { transform: scale(0.97); }
-  .modal-btn-yes { background: #E03000; color: #fff; }
-  .modal-btn-yes:hover { background: #C02800; }
-  .modal-btn-no { background: #1A1400; color: #C8A532; border: 1.5px solid #3A3010; }
-  .modal-btn-no:hover { background: #2A2000; }
-
   /* ── Per-field clear button ── */
   .inp-wrap { position: relative; display: flex; align-items: center; }
   .inp-wrap input, .inp-wrap textarea { padding-right: 32px; }
@@ -197,11 +171,11 @@
 <div class="toast" id="toast"></div>
 
 <div class="header">
-  <div class="logo-badge"><img src="https://i.ibb.co/Kc2B52nS/download-1.png" alt="Chaverim Bergen County logo" /></div>
+  <div class="logo-badge"><img src="./index_files/download-1.png" alt="Chaverim Bergen County logo"></div>
   <div>
     <div class="brand-name">Chaverim</div>
     <div class="brand-sub">Bergen County</div>
-    <div class="brand-tag">Dispatch Center</div>
+    <div class="brand-tag">Emergency Response Dispatch</div>
   </div>
 </div>
 
@@ -213,17 +187,14 @@
 
   <div class="form-card">
     <div class="card-hdr">
-      <div class="card-ttl"><i class="ti ti-alert-triangle"></i> Dispatch Form</div>
+      <div class="card-ttl"><i class="ti ti-alert-triangle"></i> Emergency Dispatch Form</div>
       <button class="clear-btn" onclick="clearForm()"><i class="ti ti-refresh" style="font-size:13px;"></i> Clear Call</button>
     </div>
 
     <div class="card-body">
 
       <!-- DB loading indicator -->
-      <div class="db-loading" id="dbLoading">
-        <div class="spinner"></div>
-        <span>Loading data from database...</span>
-      </div>
+      <div class="db-loading hidden" id="dbLoading"><i class="ti ti-wifi-off" style="color:#E05000;font-size:16px;"></i><span style="color:#C87040;">Could not connect — some features limited</span></div>
 
       <!-- Urgent toggle -->
       <div class="urgent-bar" id="urgentBar" onclick="toggleUrgent()">
@@ -242,36 +213,27 @@
         <div>
           <div class="lbl"><i class="ti ti-hash"></i> Call # <span class="req">*</span></div>
           <div class="inp-wrap callnum-wrap">
-            <input type="text" id="callNum" placeholder="Loading..." />
-            <button class="field-clear" onclick="clearField('callNum')" tabindex="-1">&times;</button>
+            <input type="text" id="callNum" placeholder="Enter manually">
+            <button class="field-clear" onclick="clearField(&#39;callNum&#39;)" tabindex="-1">×</button>
             <span class="callnum-badge" id="callNumBadge">AUTO</span>
           </div>
         </div>
         <div>
           <div class="lbl"><i class="ti ti-phone"></i> Phone</div>
           <div class="inp-wrap">
-            <input type="tel" id="phone" placeholder="(555) 123-4567" />
-            <button class="field-clear" onclick="clearField('phone')" tabindex="-1">&times;</button>
+            <input type="tel" id="phone" placeholder="(555) 123-4567">
+            <button class="field-clear" onclick="clearField(&#39;phone&#39;)" tabindex="-1">×</button>
           </div>
         </div>
       </div>
-
 
       <!-- Location -->
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
         <div class="inp-wrap loc-wrap">
-          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" />
-          <button class="field-clear" onclick="clearField('location')" tabindex="-1" style="right:56px;">&times;</button>
+          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;">
+          <button class="field-clear" onclick="clearField(&#39;location&#39;)" tabindex="-1" style="right:56px;">×</button>
           <button class="map-btn" onclick="verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
-          <button class="paste-maps-btn" onclick="pasteMapsUrl()" style="margin-top:0;">
-            <i class="ti ti-clipboard"></i> Paste Maps link
-          </button>
-          <button class="paste-maps-btn" onclick="window.open('https://i911.com','_blank')" style="margin-top:0;border-color:#4a7fa5;color:#4a7fa5;">
-            <i class="ti ti-location"></i> Request via i911
-          </button>
         </div>
       </div>
 
@@ -279,14 +241,14 @@
       <div class="field">
         <div class="lbl"><i class="ti ti-user"></i> Caller name</div>
         <div class="inp-wrap">
-          <input type="text" id="callerName" placeholder="John Doe" />
-          <button class="field-clear" onclick="clearField('callerName')" tabindex="-1">&times;</button>
+          <input type="text" id="callerName" placeholder="John Doe">
+          <button class="field-clear" onclick="clearField(&#39;callerName&#39;)" tabindex="-1">×</button>
         </div>
       </div>
 
-      <!-- Nature of call -->
+      <!-- Nature of emergency -->
       <div class="field">
-        <div class="lbl"><i class="ti ti-list"></i> Nature of call <span class="req">*</span></div>
+        <div class="lbl"><i class="ti ti-list"></i> Nature of emergency <span class="req">*</span></div>
         <select id="natureType" onchange="onNatureChange()">
           <option value="">— Select type —</option>
           <optgroup label="Vehicle">
@@ -298,7 +260,7 @@
             <option value="vehicle_pullout">Vehicle Pullout</option>
           </optgroup>
           <optgroup label="Community / Home">
-            <option value="flood">Flood</option>
+            <option value="flood">Flood (House)</option>
             <option value="heater">Heater Request</option>
             <option value="ac">AC Request</option>
           </optgroup>
@@ -313,32 +275,25 @@
         <div class="field">
           <div class="lbl"><i class="ti ti-pencil"></i> Describe the emergency <span class="req">*</span></div>
           <div class="inp-wrap">
-            <input type="text" id="customNature" placeholder="Describe the nature of the call..." />
-            <button class="field-clear" onclick="clearField('customNature')" tabindex="-1">&times;</button>
+            <input type="text" id="customNature" placeholder="Describe the nature of the emergency...">
+            <button class="field-clear" onclick="clearField(&#39;customNature&#39;)" tabindex="-1">×</button>
           </div>
         </div>
       </div>
 
       <!-- Flat tire: spare chips -->
-      <div class="tire-opts" id="tireOpts">
+      <div class="tire-opts on" id="tireOpts" style="display: flex;">
         <div class="lbl" style="width:100%;margin-bottom:4px;"><i class="ti ti-tools"></i> Spare tire?</div>
-        <button class="chip" onclick="selectChip(event,'spare','with_spare','With spare')">With spare</button>
-        <button class="chip" onclick="selectChip(event,'spare','no_spare','No spare')">No spare</button>
-        <button class="chip" onclick="selectChip(event,'spare','no_spare_needs_ez','No spare — needs EZ spare')">No spare, needs EZ spare</button>
+        <button class="chip selected" onclick="selectChip(event,&#39;spare&#39;,&#39;with_spare&#39;,&#39;With spare&#39;)">With spare</button>
+        <button class="chip" onclick="selectChip(event,&#39;spare&#39;,&#39;no_spare&#39;,&#39;No spare&#39;)">No spare</button>
+        <button class="chip" onclick="selectChip(event,&#39;spare&#39;,&#39;no_spare_needs_ez&#39;,&#39;No spare — needs EZ spare&#39;)">No spare, needs EZ spare</button>
       </div>
 
       <!-- Lockout: vehicle or house -->
-      <div class="lockout-type" id="lockoutType">
+      <div class="lockout-type" id="lockoutType" style="">
         <div class="lbl" style="width:100%;margin-bottom:4px;"><i class="ti ti-key"></i> Lockout type</div>
-        <button class="chip" onclick="selectChip(event,'lockout_type','vehicle_lockout','Vehicle lockout')">Vehicle</button>
-        <button class="chip" onclick="selectChip(event,'lockout_type','house_lockout','House lockout')">House</button>
-      </div>
-
-      <!-- House lockout: interior or exterior -->
-      <div class="tire-opts" id="houseLockSide">
-        <div class="lbl" style="width:100%;margin-bottom:4px;"><i class="ti ti-door"></i> Lock location</div>
-        <button class="chip" onclick="selectChip(event,'house_side','interior','Interior lock')">Interior lock</button>
-        <button class="chip" onclick="selectChip(event,'house_side','exterior','Exterior lock')">Exterior lock</button>
+        <button class="chip" onclick="selectChip(event,&#39;lockout_type&#39;,&#39;vehicle_lockout&#39;,&#39;Vehicle lockout&#39;)">Vehicle</button>
+        <button class="chip" onclick="selectChip(event,&#39;lockout_type&#39;,&#39;house_lockout&#39;,&#39;House lockout&#39;)">House</button>
       </div>
 
       <!-- Flood: equipment needed -->
@@ -346,8 +301,8 @@
         <div class="field">
           <div class="lbl"><i class="ti ti-tools"></i> Equipment needed <span style="font-weight:400;color:#9A8050;">(if any)</span></div>
           <div class="inp-wrap">
-            <input type="text" id="floodEquipment" placeholder="e.g. pumps, wet vac, towels..." />
-            <button class="field-clear" onclick="clearField('floodEquipment')" tabindex="-1">&times;</button>
+            <input type="text" id="floodEquipment" placeholder="e.g. pumps, wet vac, towels...">
+            <button class="field-clear" onclick="clearField(&#39;floodEquipment&#39;)" tabindex="-1">×</button>
           </div>
         </div>
       </div>
@@ -355,33 +310,33 @@
       <!-- Quantity (heater / AC) -->
       <div class="ac-qty" id="qtyField">
         <div class="field">
-          <div class="lbl"><i class="ti ti-stack"></i> <span id="qtyLabel">Quantity needed</span></div>
+          <div class="lbl"><i class="ti ti-stack"></i> <span id="qtyLabel">AC units</span></div>
           <div class="inp-wrap">
-            <input type="number" id="acQuantity" placeholder="How many?" min="1" max="99" />
-            <button class="field-clear" onclick="clearField('acQuantity')" tabindex="-1">&times;</button>
+            <input type="number" id="acQuantity" placeholder="How many?" min="1" max="99">
+            <button class="field-clear" onclick="clearField(&#39;acQuantity&#39;)" tabindex="-1">×</button>
           </div>
         </div>
       </div>
 
       <!-- Vehicle details -->
-      <div class="vehicle-fields" id="vehicleFields">
+      <div class="vehicle-fields on" id="vehicleFields">
         <div class="sub-hdr">Vehicle info</div>
 
         <div class="grid2" style="margin-bottom:1rem;">
           <div>
             <div class="lbl"><i class="ti ti-palette"></i> Color</div>
             <div class="inp-wrap has-save">
-              <input type="text" id="vColor" placeholder="Silver, Black..." list="colorList" autocomplete="off" />
-              <datalist id="colorList"></datalist>
-              <button class="field-clear" onclick="clearField('vColor')" tabindex="-1">&times;</button>
+              <input type="text" id="vColor" placeholder="Silver, Black..." list="colorList" autocomplete="off">
+              <datalist id="colorList"><option value="Beige"></option><option value="Black"></option><option value="Blue"></option><option value="Brown"></option><option value="Gold"></option><option value="Gray"></option><option value="Green"></option><option value="Maroon"></option><option value="Navy"></option><option value="Orange"></option><option value="Pink"></option><option value="Purple"></option><option value="Red"></option><option value="Silver"></option><option value="Tan"></option><option value="White"></option><option value="Yellow"></option></datalist>
+              <button class="field-clear" onclick="clearField(&#39;vColor&#39;)" tabindex="-1">×</button>
               <button class="save-custom-btn" onclick="saveCustomColor()" title="Save this color"><i class="ti ti-plus"></i></button>
             </div>
           </div>
           <div>
             <div class="lbl"><i class="ti ti-calendar"></i> Year</div>
             <div class="inp-wrap">
-              <input type="text" id="vYear" placeholder="2022" maxlength="4" />
-              <button class="field-clear" onclick="clearField('vYear')" tabindex="-1">&times;</button>
+              <input type="text" id="vYear" placeholder="2022" maxlength="4">
+              <button class="field-clear" onclick="clearField(&#39;vYear&#39;)" tabindex="-1">×</button>
             </div>
           </div>
         </div>
@@ -390,14 +345,13 @@
         <div class="field">
           <div class="lbl"><i class="ti ti-car"></i> Make</div>
           <div class="make-logo-row">
-            <div id="makeLogoWrap" class="make-logo-wrap" style="display:none;">
-              <img id="makeLogo" src="" alt="" />
+            <div id="makeLogoWrap" class="make-logo-wrap" style="display: none;">
+              <img id="makeLogo" src="./index_files/hyundai.com" alt="Hyundai logo">
             </div>
             <div class="inp-wrap has-save" style="flex:1;">
-              <select id="vMake" onchange="onMakeChange()" style="padding-right:76px;">
-                <option value="">— Select make —</option>
-              </select>
-              <button class="field-clear" onclick="clearMake()" tabindex="-1">&times;</button>
+              <input type="text" id="vMake" placeholder="Genesis, Toyota..." list="makeList" autocomplete="off" oninput="onMakeInput()">
+              <datalist id="makeList"><option value="Acura"></option><option value="Alfa Romeo"></option><option value="Audi"></option><option value="BMW"></option><option value="Buick"></option><option value="Cadillac"></option><option value="Chevrolet"></option><option value="Chrysler"></option><option value="Dodge"></option><option value="Ford"></option><option value="GMC"></option><option value="Genesis"></option><option value="Honda"></option><option value="Hyundai"></option><option value="Infiniti"></option><option value="Jeep"></option><option value="Kia"></option><option value="Land Rover"></option><option value="Lexus"></option><option value="Lincoln"></option><option value="MINI"></option><option value="Maserati"></option><option value="Mazda"></option><option value="Mercedes-Benz"></option><option value="Mitsubishi"></option><option value="Nissan"></option><option value="Other"></option><option value="Porsche"></option><option value="Ram"></option><option value="Rivian"></option><option value="Rolls-Royce"></option><option value="Subaru"></option><option value="Tesla"></option><option value="Toyota"></option><option value="Volkswagen"></option><option value="Volvo"></option></datalist>
+              <button class="field-clear" onclick="clearField(&#39;vMake&#39;);updateMakeLogo(&#39;&#39;);" tabindex="-1">×</button>
               <button class="save-custom-btn" onclick="saveCustomMake()" title="Save this make"><i class="ti ti-plus"></i></button>
             </div>
           </div>
@@ -406,10 +360,9 @@
         <div class="field">
           <div class="lbl"><i class="ti ti-car-suv"></i> Model</div>
           <div class="inp-wrap has-save">
-            <select id="vModel" disabled style="padding-right:76px;">
-              <option value="">— Select model —</option>
-            </select>
-            <button class="field-clear" onclick="clearField('vModel')" tabindex="-1">&times;</button>
+            <input type="text" id="vModel" placeholder="GV80, Camry..." list="modelList" autocomplete="off">
+            <datalist id="modelList"></datalist>
+            <button class="field-clear" onclick="clearField(&#39;vModel&#39;)" tabindex="-1">×</button>
             <button class="save-custom-btn" onclick="saveCustomModel()" title="Save this model"><i class="ti ti-plus"></i></button>
           </div>
         </div>
@@ -420,7 +373,7 @@
         <div class="lbl"><i class="ti ti-notes"></i> Additional notes</div>
         <div class="inp-wrap" style="align-items:flex-start;">
           <textarea id="notes" placeholder="Any extra details..."></textarea>
-          <button class="field-clear" onclick="clearField('notes')" tabindex="-1" style="top:10px;transform:none;">&times;</button>
+          <button class="field-clear" onclick="clearField(&#39;notes&#39;)" tabindex="-1" style="top:10px;transform:none;">×</button>
         </div>
       </div>
 
@@ -436,28 +389,6 @@
   <div class="preview" id="preview">
     <div class="preview-lbl">Message preview</div>
     <div class="preview-txt" id="previewText"></div>
-  </div>
-</div>
-
-<!-- Trapped inside modal -->
-<div class="modal-overlay" id="trappedModal">
-  <div class="modal">
-    <div class="modal-hdr">
-      <i class="ti ti-alert-triangle"></i>
-      <div class="modal-hdr-txt">Safety Check</div>
-    </div>
-    <div class="modal-body">
-      <div class="modal-question">Is anyone trapped inside?</div>
-      <div class="modal-sub">This will automatically mark the call as URGENT</div>
-      <div class="modal-btns">
-        <button class="modal-btn modal-btn-yes" onclick="trappedAnswer(true)">
-          Yes — Activate Urgent
-        </button>
-        <button class="modal-btn modal-btn-no" onclick="trappedAnswer(false)">
-          No — Continue
-        </button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -596,52 +527,6 @@ async function loadAll() {
   }
 }
 
-// ── Paste Google Maps URL → extract coords into location field ──
-window.pasteMapsUrl = async function() {
-  var url = '';
-  try {
-    url = await navigator.clipboard.readText();
-  } catch(e) {
-    url = prompt('Paste your Google Maps link here:');
-    if (!url) return;
-  }
-  url = url.trim();
-
-  var coords = null;
-
-  // Pattern 1: @lat,lng (standard maps URL)
-  var m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (m) coords = { lat: m[1], lng: m[2] };
-
-  // Pattern 2: /place/lat,lng or ?q=lat,lng
-  if (!coords) {
-    m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (m) coords = { lat: m[1], lng: m[2] };
-  }
-
-  // Pattern 3: maps.google.com/maps?ll=lat,lng
-  if (!coords) {
-    m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (m) coords = { lat: m[1], lng: m[2] };
-  }
-
-  // Pattern 4: /maps/place/name/@lat,lng or short goo.gl / maps.app.goo.gl links
-  // For short links we can't expand them client-side, so just paste the URL as-is
-  if (!coords && (url.includes('goo.gl') || url.includes('maps.app'))) {
-    document.getElementById('location').value = url;
-    showToast('Short link pasted — coords not extractable');
-    return;
-  }
-
-  if (coords) {
-    var loc = coords.lat + ', ' + coords.lng;
-    document.getElementById('location').value = loc;
-    showToast('\u2713 Coordinates set: ' + loc);
-  } else {
-    showToast('Could not extract coordinates from that link');
-  }
-};
-
 // ── Clear individual field ──
 window.clearField = function(id) {
   var el = document.getElementById(id);
@@ -729,44 +614,20 @@ function updateMakeLogo(make) {
   }
 }
 
-// ── Populate make select ──
-function populateMakes(makesObj) {
-  var sel = document.getElementById('vMake');
-  var current = sel.value;
-  sel.innerHTML = '<option value="">— Select make —</option>';
-  Object.keys(makesObj).sort().forEach(function(m) {
-    var opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
-    sel.appendChild(opt);
-  });
-  if (current) sel.value = current;
-}
-
-// ── On make change → populate model select ──
-window.onMakeChange = function() {
-  var make = document.getElementById('vMake').value;
-  var modelSel = document.getElementById('vModel');
-  modelSel.innerHTML = '<option value="">— Select model —</option>';
-  modelSel.disabled = !make;
+// ── On make input → populate model datalist from Firebase cache ──
+window.onMakeInput = function() {
+  var make = document.getElementById('vMake').value.trim();
+  var dl = document.getElementById('modelList');
+  dl.innerHTML = '';
+  document.getElementById('vModel').value = '';
   updateMakeLogo(make);
   if (!make || !window.makesData[make]) return;
   var models = window.makesData[make];
   if (models.models) models = models.models;
   if (!Array.isArray(models)) return;
   models.forEach(function(m) {
-    var opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
-    modelSel.appendChild(opt);
+    var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
   });
-};
-
-// ── Clear make + model ──
-window.clearMake = function() {
-  document.getElementById('vMake').value = '';
-  var modelSel = document.getElementById('vModel');
-  modelSel.innerHTML = '<option value="">— Select model —</option>';
-  modelSel.disabled = true;
-  updateMakeLogo('');
 };
 
 // ── Save custom color ──
@@ -790,18 +651,16 @@ window.saveCustomColor = async function() {
 
 // ── Save custom make ──
 window.saveCustomMake = async function() {
-  var make = prompt('Enter new make name to save:');
-  if (!make) return;
-  make = make.trim();
+  var make = document.getElementById('vMake').value.trim();
+  if (!make) { showToast('Enter a make first'); return; }
   try {
     const snap = await get(ref(db, 'makes'));
     var makes = snap.exists() ? snap.val() : {};
     if (makes[make]) { showToast(make + ' already saved'); return; }
     makes[make] = [];
     await set(ref(db, 'makes'), makes);
-    window.makesData[make] = [];
-    populateMakes(window.makesData);
-    document.getElementById('vMake').value = make;
+    window.makesData = makes;
+    populateMakes(makes);
     showToast('\u2713 Saved make "' + make + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -809,10 +668,9 @@ window.saveCustomMake = async function() {
 // ── Save custom model ──
 window.saveCustomModel = async function() {
   var make = document.getElementById('vMake').value.trim();
-  if (!make) { showToast('Select a make first'); return; }
-  var model = prompt('Enter new model name to save under ' + make + ':');
-  if (!model) return;
-  model = model.trim();
+  var model = document.getElementById('vModel').value.trim();
+  if (!model) { showToast('Enter a model first'); return; }
+  if (!make) { showToast('Enter a make first'); return; }
   try {
     const snap = await get(ref(db, 'makes/' + make));
     var models = snap.exists() ? snap.val() : [];
@@ -825,8 +683,7 @@ window.saveCustomModel = async function() {
     models.sort();
     await set(ref(db, 'makes/' + make), models);
     window.makesData[make] = models;
-    window.onMakeChange();
-    document.getElementById('vModel').value = model;
+    window.onMakeInput(); // refresh model datalist
     showToast('\u2713 Saved model "' + model + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -857,20 +714,6 @@ window.onNatureChange = function() {
   document.getElementById('lockoutType').style.display = showLock ? 'flex' : '';
   document.getElementById('lockoutType').classList.toggle('on', showLock);
 
-  // Hide house side chips when nature changes
-  document.getElementById('houseLockSide').style.display = '';
-  document.getElementById('houseLockSide').classList.remove('on');
-
-  // Show trapped modal when lockout selected
-  if (val === 'lockout') {
-    document.getElementById('trappedModal').classList.add('on');
-  }
-
-  // For lockout, hide vehicle fields until user picks vehicle vs house chip
-  if (val === 'lockout') {
-    document.getElementById('vehicleFields').classList.remove('on');
-  }
-
   // Flood equipment
   var showFlood = val === 'flood';
   document.getElementById('floodEquip').classList.toggle('on', showFlood);
@@ -891,49 +734,12 @@ window.onNatureChange = function() {
   document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
 };
 
-// ── Trapped inside modal answer ──
-window.trappedAnswer = function(isTrapped) {
-  document.getElementById('trappedModal').classList.remove('on');
-  if (isTrapped) {
-    window.isUrgent = true;
-    document.getElementById('urgentBar').classList.add('active');
-    showToast('*** URGENT activated — person trapped inside ***');
-  }
-};
-
 // ── Chip select ──
 window.selectChip = function(evt, group, id, label) {
   window.chips[group] = { id: id, label: label };
   var parent = evt.target.parentElement;
   parent.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
   evt.target.classList.add('selected');
-
-  // Lockout type: show/hide vehicle fields and house side chips
-  if (group === 'lockout_type') {
-    var isVehicle = (id === 'vehicle_lockout');
-    var isHouse   = (id === 'house_lockout');
-
-    // Vehicle fields
-    document.getElementById('vehicleFields').classList.toggle('on', isVehicle);
-    if (!isVehicle) {
-      ['vColor','vYear','vMake','vModel'].forEach(function(fid){ document.getElementById(fid).value = ''; });
-      updateMakeLogo('');
-    }
-
-    // House interior/exterior chips
-    var sideEl = document.getElementById('houseLockSide');
-    if (isHouse) {
-      sideEl.style.display = 'flex';
-      sideEl.classList.add('on');
-      // Clear any previous side chip selection
-      delete window.chips['house_side'];
-      sideEl.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
-    } else {
-      sideEl.style.display = '';
-      sideEl.classList.remove('on');
-      delete window.chips['house_side'];
-    }
-  }
 };
 
 // ── Build nature string ──
@@ -952,7 +758,6 @@ function buildNatureString() {
 
   if (val === 'flat_tire' && window.chips['spare']) parts.push(window.chips['spare'].label);
   if (val === 'lockout' && window.chips['lockout_type']) parts.push(window.chips['lockout_type'].label);
-  if (val === 'lockout' && window.chips['house_side']) parts.push(window.chips['house_side'].label);
   if (val === 'flood') {
     var equip = document.getElementById('floodEquipment').value.trim();
     if (equip) parts.push('Equipment: ' + equip);
@@ -970,7 +775,7 @@ function buildNatureString() {
   }
   var notes = document.getElementById('notes').value.trim();
   if (notes) parts.push(notes);
-  return parts.filter(Boolean).join(' | ');
+  return parts.filter(Boolean).join(' — ');
 }
 
 function getFormData() {
@@ -993,7 +798,7 @@ async function saveCallNumber(num) {
 
 function buildWA(d) {
   var lines = [];
-  if (d.urgent) lines.push('*URGENT CALL*', '');
+  if (d.urgent) lines.push('*** URGENT CALL ***', '');
   lines.push('Call#:' + d.callNum);
   lines.push('');
   lines.push('Location:' + d.location);
@@ -1013,7 +818,7 @@ function buildWA(d) {
 
 function buildInt(d) {
   var lines = [];
-  if (d.urgent) lines.push('*URGENT*', '');
+  if (d.urgent) lines.push('*** URGENT ***', '');
   lines.push('New Call (BC)');
   lines.push('');
   lines.push('Location: ' + d.location);
@@ -1033,11 +838,7 @@ function showPreview(txt) {
 
 window.dispatchWhatsApp = async function() {
   var d = getFormData();
-  if (!d.urgent) {
-    if (!d.callNum) { alert('Please enter a Call #.'); return; }
-    if (!d.location) { alert('Please enter a Location.'); return; }
-    if (!d.nature) { alert('Please select a Nature of Call.'); return; }
-  }
+  if (!d.callNum || !d.location || !d.nature) { alert('Please fill in Call #, Location, and Nature of Emergency.'); return; }
   var msg = buildWA(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
@@ -1046,10 +847,7 @@ window.dispatchWhatsApp = async function() {
 
 window.dispatchInterstate = async function() {
   var d = getFormData();
-  if (!d.urgent) {
-    if (!d.location) { alert('Please enter a Location.'); return; }
-    if (!d.nature) { alert('Please select a Nature of Call.'); return; }
-  }
+  if (!d.location || !d.nature) { alert('Please fill in Location and Nature of Emergency.'); return; }
   var msg = buildInt(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
@@ -1065,11 +863,7 @@ window.clearForm = async function() {
   ['phone','location','callerName','notes','vYear','vColor','vMake','vModel','acQuantity','floodEquipment','customNature'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
-  document.getElementById('vMake').value = '';
-  var modelSel = document.getElementById('vModel');
-  modelSel.innerHTML = '<option value="">— Select model —</option>';
-  modelSel.disabled = true;
-  updateMakeLogo('');
+  document.getElementById('makeLogoWrap').style.display = 'none';
   document.getElementById('natureType').value = '';
   // clear model datalist
   document.getElementById('modelList').innerHTML = '';
@@ -1079,8 +873,6 @@ window.clearForm = async function() {
   document.getElementById('urgentBar').classList.remove('active');
   document.getElementById('vehicleFields').classList.remove('on');
   document.getElementById('tireOpts').classList.remove('on');
-  document.getElementById('houseLockSide').style.display = '';
-  document.getElementById('houseLockSide').classList.remove('on');
   document.getElementById('lockoutType').classList.remove('on');
   document.getElementById('floodEquip').classList.remove('on');
   document.getElementById('qtyField').classList.remove('on');
@@ -1099,5 +891,6 @@ window.clearForm = async function() {
 // ── Init ──
 loadAll();
 </script>
-</body>
-</html>
+
+
+</body></html>
