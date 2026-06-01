@@ -129,8 +129,7 @@
   .save-custom-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #0F0E06; border: 1px solid #3A3010; border-radius: 7px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #C8A532; cursor: pointer; font-size: 14px; padding: 0; transition: all 0.15s; }
   .save-custom-btn:hover { background: #C8A532; color: #0F0E06; }
   .save-custom-btn i { font-size: 14px; }
-  /* give inputs room for the + button */
-  #vColor, #vMake, #vModel { padding-right: 44px; }
+  .inp-wrap.has-save .field-clear { right: 44px; }
 
   /* ── Toast notification ── */
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(20px); background: #0F0E06; color: #C8A532; border: 1px solid #3A3010; border-radius: 10px; padding: 0.6rem 1.2rem; font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 9999; white-space: nowrap; }
@@ -530,6 +529,14 @@ async function loadAll() {
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
   }
 }
+
+// ── Clear individual field ──
+window.clearField = function(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.value = '';
+  el.focus();
+};
 
 // ── Toast ──
 function showToast(msg) {
