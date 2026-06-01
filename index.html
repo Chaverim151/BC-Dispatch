@@ -114,6 +114,11 @@
   .make-logo-wrap { width: 48px; height: 48px; background: #fff; border: 1.5px solid #E0CC80; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; padding: 4px; }
   .make-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
 
+  /* ── Paste Maps button ── */
+  .paste-maps-btn { margin-top: 6px; display: flex; align-items: center; gap: 6px; background: transparent; border: 1.5px dashed #C8A532; border-radius: 8px; padding: 6px 12px; color: #8B6E1A; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; width: 100%; justify-content: center; }
+  .paste-maps-btn:hover { background: #F5ECC0; border-style: solid; color: #6B5515; }
+  .paste-maps-btn i { font-size: 14px; }
+
   /* ── Trapped modal ── */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10,9,3,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 1.25rem; backdrop-filter: blur(4px); }
   .modal-overlay.on { display: flex; }
@@ -256,6 +261,14 @@
           <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" />
           <button class="field-clear" onclick="clearField('location')" tabindex="-1" style="right:56px;">&times;</button>
           <button class="map-btn" onclick="verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+          <button class="paste-maps-btn" onclick="pasteMapsUrl()" style="margin-top:0;">
+            <i class="ti ti-clipboard"></i> Paste Maps link
+          </button>
+          <button class="paste-maps-btn" onclick="window.open('https://i911.com','_blank')" style="margin-top:0;border-color:#4a7fa5;color:#4a7fa5;">
+            <i class="ti ti-location"></i> Request via i911
+          </button>
         </div>
       </div>
 
@@ -577,6 +590,52 @@ async function loadAll() {
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
   }
 }
+
+// ── Paste Google Maps URL → extract coords into location field ──
+window.pasteMapsUrl = async function() {
+  var url = '';
+  try {
+    url = await navigator.clipboard.readText();
+  } catch(e) {
+    url = prompt('Paste your Google Maps link here:');
+    if (!url) return;
+  }
+  url = url.trim();
+
+  var coords = null;
+
+  // Pattern 1: @lat,lng (standard maps URL)
+  var m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) coords = { lat: m[1], lng: m[2] };
+
+  // Pattern 2: /place/lat,lng or ?q=lat,lng
+  if (!coords) {
+    m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) coords = { lat: m[1], lng: m[2] };
+  }
+
+  // Pattern 3: maps.google.com/maps?ll=lat,lng
+  if (!coords) {
+    m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) coords = { lat: m[1], lng: m[2] };
+  }
+
+  // Pattern 4: /maps/place/name/@lat,lng or short goo.gl / maps.app.goo.gl links
+  // For short links we can't expand them client-side, so just paste the URL as-is
+  if (!coords && (url.includes('goo.gl') || url.includes('maps.app'))) {
+    document.getElementById('location').value = url;
+    showToast('Short link pasted — coords not extractable');
+    return;
+  }
+
+  if (coords) {
+    var loc = coords.lat + ', ' + coords.lng;
+    document.getElementById('location').value = loc;
+    showToast('\u2713 Coordinates set: ' + loc);
+  } else {
+    showToast('Could not extract coordinates from that link');
+  }
+};
 
 // ── Clear individual field ──
 window.clearField = function(id) {
