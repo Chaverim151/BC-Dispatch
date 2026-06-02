@@ -261,7 +261,7 @@
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
         <div class="inp-wrap loc-wrap">
-          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" />
+          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" oninput="window.updateMapsLink()" />
           <button class="field-clear" onclick="window.clearField('location')" tabindex="-1" style="right:56px;">&times;</button>
           <button class="map-btn" onclick="window.verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
         </div>
@@ -296,6 +296,8 @@
             <option value="lockout">Lockout</option>
             <option value="vehicle_stalled">Vehicle Stalled</option>
             <option value="vehicle_pullout">Vehicle Pullout</option>
+            <option value="plastic_hanging">Plastic Hanging</option>
+            <option value="bumper_hanging">Bumper Hanging</option>
           </optgroup>
           <optgroup label="Community / Home">
             <option value="flood">Flood</option>
@@ -311,11 +313,21 @@
       <!-- Custom nature field (shown when "Other" selected) -->
       <div class="ac-qty" id="customNatureWrap">
         <div class="field">
-          <div class="lbl"><i class="ti ti-pencil"></i> Describe the emergency <span class="req">*</span></div>
+          <div class="lbl"><i class="ti ti-pencil"></i> Describe the call <span class="req">*</span></div>
           <div class="inp-wrap">
             <input type="text" id="customNature" placeholder="Describe the nature of the call..." />
             <button class="field-clear" onclick="window.clearField('customNature')" tabindex="-1">&times;</button>
           </div>
+        </div>
+        <div class="urgent-bar" id="otherVehicleBar" onclick="window.toggleOtherVehicle()" style="margin-bottom:0.75rem;padding:0.6rem 1rem;">
+          <div class="urgent-left">
+            <i class="ti ti-car" style="font-size:17px;color:#C8A532;"></i>
+            <div>
+              <div class="urgent-label" style="font-size:13px;">Vehicle related?</div>
+              <div class="urgent-sub">Show vehicle info fields</div>
+            </div>
+          </div>
+          <div class="toggle" id="otherVehicleToggle"></div>
         </div>
       </div>
 
@@ -437,22 +449,41 @@
   </div>
 </div>
 
-<!-- Trapped inside modal -->
+<!-- Locked inside modal -->
 <div class="modal-overlay" id="trappedModal">
   <div class="modal">
     <div class="modal-hdr">
       <i class="ti ti-alert-triangle"></i>
       <div class="modal-hdr-txt">Safety Check</div>
     </div>
-    <div class="modal-body">
-      <div class="modal-question">Is anyone trapped inside?</div>
-      <div class="modal-sub">This will automatically mark the call as URGENT</div>
+
+    <!-- Step 1: Yes / No -->
+    <div class="modal-body" id="trappedStep1">
+      <div class="modal-question">Is a person or animal locked inside?</div>
+      <div class="modal-sub">If yes, call will be marked *URGENT*</div>
       <div class="modal-btns">
         <button class="modal-btn modal-btn-yes" onclick="window.trappedAnswer(true)">
-          Yes — Activate Urgent
+          Yes
         </button>
         <button class="modal-btn modal-btn-no" onclick="window.trappedAnswer(false)">
           No — Continue
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Who is locked inside? -->
+    <div class="modal-body" id="trappedStep2" style="display:none;">
+      <div class="modal-question">Who is locked inside?</div>
+      <div class="modal-sub">This will be added in bold to the message</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:0.5rem;">
+        <button class="modal-btn modal-btn-yes" onclick="window.trappedWho('Person')" style="background:#8B2000;">
+          Person locked inside
+        </button>
+        <button class="modal-btn modal-btn-yes" onclick="window.trappedWho('Animal')" style="background:#5A5200;">
+          Animal locked inside
+        </button>
+        <button class="modal-btn modal-btn-no" onclick="window.trappedWho('Other')">
+          Other — specify in notes
         </button>
       </div>
     </div>
@@ -594,7 +625,23 @@ async function loadAll() {
   }
 }
 
-// ── Paste Google Maps URL → extract coords into location field ──
+// ── Generate Google Maps link from location field ──
+function updateMapsLink() {
+  var loc = document.getElementById('location').value.trim();
+  var wrap = document.getElementById('mapsLinkWrap');
+  var anchor = document.getElementById('mapsLinkAnchor');
+  var text = document.getElementById('mapsLinkText');
+  if (loc) {
+    var url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc);
+    anchor.href = url;
+    text.textContent = 'Open "' + loc + '" in Google Maps';
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+window.updateMapsLink = updateMapsLink;
 window.pasteMapsUrl = async function() {
   var url = '';
   try {
@@ -615,9 +662,11 @@ window.pasteMapsUrl = async function() {
   if (coords) {
     var loc = coords.lat + ', ' + coords.lng;
     document.getElementById('location').value = loc;
+    updateMapsLink();
     showToast('\u2713 Coordinates set: ' + loc);
   } else if (url.includes('goo.gl') || url.includes('maps.app') || url.includes('maps.google')) {
     document.getElementById('location').value = url;
+    updateMapsLink();
     showToast('Link pasted as location');
   } else {
     showToast('Could not extract coordinates from that link');
@@ -794,6 +843,19 @@ window.saveCustomModel = async function() {
   } catch(e) { showToast('Could not save — check connection'); }
 };
 
+// ── Other: vehicle related toggle ──
+window.isOtherVehicle = false;
+window.toggleOtherVehicle = function() {
+  window.isOtherVehicle = !window.isOtherVehicle;
+  document.getElementById('otherVehicleBar').classList.toggle('active', window.isOtherVehicle);
+  document.getElementById('vehicleFields').classList.toggle('on', window.isOtherVehicle);
+  if (!window.isOtherVehicle) {
+    ['vColor','vYear','vMake','vModel'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('modelList').innerHTML = '';
+    updateMakeLogo('');
+  }
+};
+
 // ── Urgent ──
 window.toggleUrgent = function() {
   window.isUrgent = !window.isUrgent;
@@ -801,7 +863,7 @@ window.toggleUrgent = function() {
 };
 
 // ── Nature change ──
-var VEHICLE_NATURES = ['flat_tire','boost','out_of_gas','lockout','vehicle_stalled','vehicle_pullout'];
+var VEHICLE_NATURES = ['flat_tire','boost','out_of_gas','lockout','vehicle_stalled','vehicle_pullout','plastic_hanging','bumper_hanging'];
 var QTY_NATURES = { heater: 'Heater units', ac: 'AC units' };
 
 window.onNatureChange = function() {
@@ -845,23 +907,45 @@ window.onNatureChange = function() {
   if (showQty) document.getElementById('qtyLabel').textContent = QTY_NATURES[val];
   else document.getElementById('acQuantity').value = '';
 
-  // Custom nature text
+  // Custom nature text + vehicle toggle
   var showCustom = val === 'other';
   document.getElementById('customNatureWrap').classList.toggle('on', showCustom);
-  if (!showCustom) document.getElementById('customNature').value = '';
+  if (!showCustom) {
+    document.getElementById('customNature').value = '';
+    window.isOtherVehicle = false;
+    document.getElementById('otherVehicleBar').classList.remove('active');
+  }
 
   window.chips = {};
   document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
 };
 
 // ── Trapped inside modal answer ──
-window.trappedAnswer = function(isTrapped) {
-  document.getElementById('trappedModal').classList.remove('on');
-  if (isTrapped) {
-    window.isUrgent = true;
-    document.getElementById('urgentBar').classList.add('active');
-    showToast('*** URGENT activated — person trapped inside ***');
+// ── Locked inside modal ──
+window.lockedInsideNote = '';
+
+window.trappedAnswer = function(isLocked) {
+  if (!isLocked) {
+    document.getElementById('trappedModal').classList.remove('on');
+    window.lockedInsideNote = '';
+    return;
   }
+  // Show step 2
+  document.getElementById('trappedStep1').style.display = 'none';
+  document.getElementById('trappedStep2').style.display = 'block';
+};
+
+window.trappedWho = function(who) {
+  document.getElementById('trappedModal').classList.remove('on');
+  // Reset steps for next time
+  document.getElementById('trappedStep1').style.display = 'block';
+  document.getElementById('trappedStep2').style.display = 'none';
+  // Activate urgent
+  window.isUrgent = true;
+  document.getElementById('urgentBar').classList.add('active');
+  // Store who is locked inside for message
+  window.lockedInsideNote = who + ' locked inside';
+  showToast('*URGENT* — ' + window.lockedInsideNote);
 };
 
 // ── Chip select ──
@@ -914,8 +998,14 @@ function buildNatureString() {
   var parts = [label];
 
   if (val === 'flat_tire' && window.chips['spare']) parts.push(window.chips['spare'].label);
-  if (val === 'lockout' && window.chips['lockout_type']) parts.push(window.chips['lockout_type'].label);
-  if (val === 'lockout' && window.chips['house_side']) parts.push(window.chips['house_side'].label);
+  if (val === 'lockout') {
+    var ltype = window.chips['lockout_type'];
+    if (ltype) {
+      // Replace the generic "Lockout" label with specific label
+      parts[0] = ltype.id === 'vehicle_lockout' ? 'Car Lockout' : 'House Lockout';
+    }
+    if (window.chips['house_side']) parts.push(window.chips['house_side'].label);
+  }
   if (val === 'flood') {
     var equip = document.getElementById('floodEquipment').value.trim();
     if (equip) parts.push('Equipment: ' + equip);
@@ -956,10 +1046,13 @@ async function saveCallNumber(num) {
 
 function buildWA(d) {
   var lines = [];
-  if (d.urgent) lines.push('*URGENT CALL*', '');
+  if (d.urgent) lines.push('*URGENT CALL*');
+  if (window.lockedInsideNote) lines.push('*' + window.lockedInsideNote.toUpperCase() + '*');
+  if (d.urgent || window.lockedInsideNote) lines.push('');
   lines.push('Call#:' + d.callNum);
   lines.push('');
   lines.push('Location:' + d.location);
+  if (d.location) lines.push('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(d.location));
   lines.push('');
   lines.push('Phone:' + d.phone);
   lines.push('');
@@ -976,7 +1069,9 @@ function buildWA(d) {
 
 function buildInt(d) {
   var lines = [];
-  if (d.urgent) lines.push('*URGENT*', '');
+  if (d.urgent) lines.push('*URGENT*');
+  if (window.lockedInsideNote) lines.push('*' + window.lockedInsideNote.toUpperCase() + '*');
+  if (d.urgent || window.lockedInsideNote) lines.push('');
   lines.push('New Call (BC)');
   lines.push('');
   lines.push('Location: ' + d.location);
@@ -1036,6 +1131,7 @@ window.clearForm = async function() {
   // clear model datalist
   document.getElementById('modelList').innerHTML = '';
 
+  window.lockedInsideNote = '';
   window.isUrgent = false;
   window.chips = {};
   document.getElementById('urgentBar').classList.remove('active');
@@ -1046,9 +1142,12 @@ window.clearForm = async function() {
   document.getElementById('lockoutType').classList.remove('on');
   document.getElementById('floodEquip').classList.remove('on');
   document.getElementById('qtyField').classList.remove('on');
+  window.isOtherVehicle = false;
+  document.getElementById('otherVehicleBar').classList.remove('active');
   document.getElementById('customNatureWrap').classList.remove('on');
   document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
   document.getElementById('preview').classList.remove('on');
+  document.getElementById('mapsLinkWrap').style.display = 'none';
 
   // Load next call number fresh
   try {
