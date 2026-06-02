@@ -473,7 +473,7 @@
               <img id="makeLogo" src="" alt="" />
             </div>
             <div class="inp-wrap has-save" style="flex:1;">
-              <input type="text" id="vMake" placeholder="Type or select make..." list="makeList" autocomplete="off" oninput="window.onMakeInput()" />
+              <input type="text" id="vMake" placeholder="Type or select make..." list="makeList" autocomplete="off" oninput="window.onMakeInput()" onfocus="window.onMakeInput()" />
               <datalist id="makeList"></datalist>
               <button class="field-clear" onclick="window.clearMake()" tabindex="-1">&times;</button>
               <button class="save-custom-btn" onclick="window.saveCustomMake()" title="Save this make"><i class="ti ti-plus"></i></button>
@@ -836,6 +836,12 @@ window.onMakeInput = function() {
   dl.innerHTML = '';
   document.getElementById('vModel').value = '';
   updateMakeLogo(make);
+  // Always repopulate make datalist so backspace still shows options
+  var makeDl = document.getElementById('makeList');
+  makeDl.innerHTML = '';
+  Object.keys(window.makesData).sort().forEach(function(m) {
+    var opt = document.createElement('option'); opt.value = m; makeDl.appendChild(opt);
+  });
   if (!make || !window.makesData[make]) return;
   var models = window.makesData[make];
   if (models.models) models = models.models;
