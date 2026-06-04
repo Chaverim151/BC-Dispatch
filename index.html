@@ -56,6 +56,9 @@ window.initAutocomplete = function() {
   .use-call-btn { background: #2E7D32; border: none; border-radius: 6px; padding: 4px 10px; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .use-call-btn:hover { background: #388E3C; }
 
+  /* ── Color swatch in select ── */
+  #vColor option { padding-left: 8px; }
+
   /* ── Google Places Autocomplete overrides ── */
   .pac-container { border-radius: 10px; border: 1.5px solid #E0CC80; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin-top: 4px; background: #FFFEF5; z-index: 9999; }
   .pac-item { padding: 10px 14px; font-size: 14px; color: #1A1400; cursor: pointer; border-top: 1px solid #F0E8C0; }
@@ -502,11 +505,11 @@ window.initAutocomplete = function() {
         <div class="grid2" style="margin-bottom:1rem;">
           <div>
             <div class="lbl"><i class="ti ti-palette"></i> Color</div>
-            <div class="inp-wrap has-save">
-              <input type="text" id="vColor" placeholder="Silver, Black..." list="colorList" autocomplete="off" />
-              <datalist id="colorList"></datalist>
-              <button class="field-clear" onclick="window.clearField('vColor')" tabindex="-1">&times;</button>
-              <button class="save-custom-btn" onclick="window.saveCustomColor()" title="Save this color"><i class="ti ti-plus"></i></button>
+            <div class="inp-wrap has-save" id="colorInputWrap">
+              <!-- Populated by JS based on device -->
+            </div>
+            <div id="customColorWrap" style="display:none;margin-top:6px;">
+              <input type="text" id="customColor" placeholder="Enter color..." style="font-size:14px;" />
             </div>
           </div>
           <div>
@@ -525,22 +528,22 @@ window.initAutocomplete = function() {
             <div id="makeLogoWrap" class="make-logo-wrap" style="display:none;">
               <img id="makeLogo" src="" alt="" />
             </div>
-            <div class="inp-wrap has-save" style="flex:1;">
-              <input type="text" id="vMake" placeholder="Type or select make..." list="makeList" autocomplete="off" oninput="window.onMakeInput()" onfocus="window.onMakeInput()" />
-              <datalist id="makeList"></datalist>
-              <button class="field-clear" onclick="window.clearMake()" tabindex="-1">&times;</button>
-              <button class="save-custom-btn" onclick="window.saveCustomMake()" title="Save this make"><i class="ti ti-plus"></i></button>
+            <div class="inp-wrap has-save" style="flex:1;" id="makeInputWrap">
+              <!-- Populated by JS based on device -->
             </div>
+          </div>
+          <div id="customMakeWrap" style="display:none;margin-top:6px;">
+            <input type="text" id="customMake" placeholder="Enter make..." style="font-size:14px;" />
           </div>
         </div>
 
         <div class="field">
           <div class="lbl"><i class="ti ti-car-suv"></i> Model</div>
-          <div class="inp-wrap has-save">
-            <input type="text" id="vModel" placeholder="Type or select model..." list="modelList" autocomplete="off" />
-            <datalist id="modelList"></datalist>
-            <button class="field-clear" onclick="window.clearField('vModel')" tabindex="-1">&times;</button>
-            <button class="save-custom-btn" onclick="window.saveCustomModel()" title="Save this model"><i class="ti ti-plus"></i></button>
+          <div class="inp-wrap has-save" id="modelInputWrap">
+            <!-- Populated by JS based on device -->
+          </div>
+          <div id="customModelWrap" style="display:none;margin-top:6px;">
+            <input type="text" id="customModel" placeholder="Enter model..." style="font-size:14px;" />
           </div>
         </div>
       </div>
@@ -907,16 +910,205 @@ function showToast(msg) {
 
 // ── Populate color datalist ──
 function populateColors(colors) {
-  var dl = document.getElementById('colorList');
-  dl.innerHTML = '';
-  colors.forEach(function(c) {
-    var opt = document.createElement('option'); opt.value = c; dl.appendChild(opt);
-  });
+  var allColors = colors.filter(function(c){ return c !== 'Other'; }).concat(['Other']);
+  window._colorOptions = allColors;
+
+  // Rebuild overlay if it exists (mobile)
+  var overlay = document.getElementById('colorPickerOverlay');
+  if (overlay) overlay.remove();
+
+  // Always populate the select (used on both mobile custom picker and desktop select)
+  var sel = document.getElementById('vColor');
+  if (sel && sel.tagName === 'SELECT') {
+    var current = sel.value;
+    sel.innerHTML = '<option value="">— Select color —</option>';
+    allColors.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c; opt.textContent = c; sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  }
 }
 
-// ── Populate make datalist ──
+window.onColorChange = function() {
+  var color = document.getElementById('vColor') ? document.getElementById('vColor').value : '';
+  var customWrap = document.getElementById('customColorWrap');
+  if (customWrap) customWrap.style.display = (color === 'Other') ? 'block' : 'none';
+};
 
-// ── Car brand logo URLs (via logo.dev CDN — no API key needed) ──
+window.onModelInputChange = function() {
+  var model = document.getElementById('vModel') ? document.getElementById('vModel').value.trim() : '';
+  var customWrap = document.getElementById('customModelWrap');
+  if (customWrap) customWrap.style.display = (model === 'Other') ? 'block' : 'none';
+};
+
+// ── Color → CSS color map for swatches ──
+var COLOR_MAP = {
+  'Beige':'#F5F0DC','Black':'#1A1A1A','Blue':'#2563EB','Brown':'#7B4A2D',
+  'Gold':'#C8A532','Gray':'#808080','Green':'#2E7D32','Maroon':'#800000',
+  'Navy':'#1B2A6B','Orange':'#E65100','Pink':'#E91E8C','Purple':'#6A1B9A',
+  'Red':'#C62828','Silver':'#C0C0C0','Tan':'#D2B48C','White':'#F5F5F5',
+  'Yellow':'#FDD835'
+};
+
+function getSwatchHtml(color) {
+  var c = COLOR_MAP[color];
+  if (!c) return '';
+  var border = (color === 'White' || color === 'Beige' || color === 'Silver') ? '#CCC' : c;
+  return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c + ';border:1px solid ' + border + ';margin-right:6px;vertical-align:middle;"></span>';
+}
+
+// On mobile, <select> doesn't support HTML in options.
+// We use a custom dropdown overlay instead for color.
+function buildColorSelect(colors, wrap) {
+  // Use a button that opens a custom color picker overlay
+  var current = '';
+  wrap.innerHTML =
+    '<button type="button" id="colorPickerBtn" onclick="window.openColorPicker()" style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #E0CC80;border-radius:10px;font-size:14px;background:#FFFEF5;color:#1A1400;font-family:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px;-webkit-appearance:none;">' +
+      '<span id="colorPickerSwatch" style="width:14px;height:14px;border-radius:50%;border:1px solid #CCC;flex-shrink:0;display:none;"></span>' +
+      '<span id="colorPickerLabel" style="flex:1;">— Select color —</span>' +
+      '<i class="ti ti-chevron-down" style="color:#C8A532;font-size:14px;position:absolute;right:12px;"></i>' +
+    '</button>' +
+    '<input type="hidden" id="vColor" />' +
+    '<button class="save-custom-btn" onclick="window.saveCustomColor()" title="Save color" style="position:absolute;right:36px;top:50%;transform:translateY(-50%);"><i class="ti ti-plus"></i></button>';
+  wrap.style.position = 'relative';
+}
+
+window._colorOptions = [];
+
+window.openColorPicker = function() {
+  var overlay = document.getElementById('colorPickerOverlay');
+  if (overlay) { overlay.style.display = 'flex'; return; }
+
+  // Build overlay
+  overlay = document.createElement('div');
+  overlay.id = 'colorPickerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#FDFBF0;width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:1.25rem;max-height:70vh;overflow-y:auto;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:15px;font-weight:600;color:#1A1400;margin-bottom:1rem;';
+  title.textContent = 'Select Color';
+  sheet.appendChild(title);
+
+  window._colorOptions.forEach(function(color) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;background:transparent;font-size:15px;color:#1A1400;font-family:inherit;cursor:pointer;border-radius:8px;text-align:left;';
+    var cssColor = COLOR_MAP[color] || '#999';
+    var border = (color==='White'||color==='Beige'||color==='Silver') ? '#CCC' : cssColor;
+    btn.innerHTML = '<span style="width:18px;height:18px;border-radius:50%;background:' + cssColor + ';border:1.5px solid ' + border + ';flex-shrink:0;"></span>' + color;
+    btn.addEventListener('click', function() {
+      window.setColor(color);
+      overlay.style.display = 'none';
+    });
+    btn.addEventListener('mouseenter', function(){ btn.style.background = '#F5ECC0'; });
+    btn.addEventListener('mouseleave', function(){ btn.style.background = 'transparent'; });
+    sheet.appendChild(btn);
+  });
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.style.display='none'; });
+  document.body.appendChild(overlay);
+};
+
+window.setColor = function(color) {
+  document.getElementById('vColor').value = color;
+  var label = document.getElementById('colorPickerLabel');
+  var swatch = document.getElementById('colorPickerSwatch');
+  if (label) label.textContent = color || '— Select color —';
+  if (swatch) {
+    var c = COLOR_MAP[color];
+    if (c) {
+      var border = (color==='White'||color==='Beige'||color==='Silver') ? '#CCC' : c;
+      swatch.style.background = c;
+      swatch.style.borderColor = border;
+      swatch.style.display = 'inline-block';
+    } else { swatch.style.display = 'none'; }
+  }
+  // Handle Other
+  var customWrap = document.getElementById('customColorWrap');
+  if (customWrap) customWrap.style.display = (color === 'Other') ? 'block' : 'none';
+};
+
+// ── Handle Other for make/model selects ──
+window.onMakeChange = function() {
+  var make = document.getElementById('vMake').value;
+  var customWrap = document.getElementById('customMakeWrap');
+  if (customWrap) customWrap.style.display = (make === 'Other') ? 'block' : 'none';
+  if (make === 'Other') { updateMakeLogo(''); return; }
+  updateMakeLogo(make);
+  var modelEl = document.getElementById('vModel');
+  if (modelEl && modelEl.tagName === 'SELECT') { modelEl.innerHTML = '<option value="">— Select model —</option>'; modelEl.disabled = true; }
+  var customModelWrap = document.getElementById('customModelWrap');
+  if (customModelWrap) customModelWrap.style.display = 'none';
+  if (!make || !window.makesData[make]) return;
+  var models = window.makesData[make];
+  if (models.models) models = models.models;
+  if (!Array.isArray(models)) return;
+  populateModels(models);
+  if (modelEl && modelEl.tagName === 'SELECT') modelEl.disabled = false;
+};
+
+window.onModelChange = function() {
+  var model = document.getElementById('vModel') ? document.getElementById('vModel').value : '';
+  var customWrap = document.getElementById('customModelWrap');
+  if (customWrap) customWrap.style.display = (model === 'Other') ? 'block' : 'none';
+};
+
+// ── Detect mobile (touch device) ──
+var isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+// ── Build make/model UI based on device ──
+function buildMakeModelUI() {
+  var makeWrap  = document.getElementById('makeInputWrap');
+  var modelWrap = document.getElementById('modelInputWrap');
+  var colorWrap = document.getElementById('colorInputWrap');
+  if (!makeWrap || !modelWrap) return;
+
+  if (isMobile) {
+    if (colorWrap) buildColorSelect([], colorWrap);
+
+    makeWrap.innerHTML =
+      '<select id="vMake" onchange="window.onMakeChange()" style="padding-right:76px;">' +
+        '<option value="">— Select make —</option>' +
+        '<option value="Other">Other</option>' +
+      '</select>' +
+      '<button class="field-clear" onclick="window.clearMake()" tabindex="-1">&times;</button>' +
+      '<button class="save-custom-btn" onclick="window.saveCustomMake()" title="Save make"><i class="ti ti-plus"></i></button>';
+
+    modelWrap.innerHTML =
+      '<select id="vModel" disabled onchange="window.onModelChange()" style="padding-right:76px;">' +
+        '<option value="">— Select model —</option>' +
+        '<option value="Other">Other</option>' +
+      '</select>' +
+      '<button class="field-clear" onclick="window.clearField(\'vModel\')" tabindex="-1">&times;</button>' +
+      '<button class="save-custom-btn" onclick="window.saveCustomModel()" title="Save model"><i class="ti ti-plus"></i></button>';
+  } else {
+    // Desktop: color as styled <select>, make/model as datalist
+    if (colorWrap) colorWrap.innerHTML =
+      '<select id="vColor" onchange="window.onColorChange()" style="padding-right:76px;">' +
+        '<option value="">— Select color —</option>' +
+      '</select>' +
+      '<button class="field-clear" onclick="window.clearField(\'vColor\')" tabindex="-1">&times;</button>' +
+      '<button class="save-custom-btn" onclick="window.saveCustomColor()" title="Save color"><i class="ti ti-plus"></i></button>';
+
+    makeWrap.innerHTML =
+      '<input type="text" id="vMake" placeholder="Type or select make..." list="makeList" autocomplete="off" oninput="window.onMakeInput()" onfocus="window.onMakeInput()" />' +
+      '<datalist id="makeList"></datalist>' +
+      '<button class="field-clear" onclick="window.clearMake()" tabindex="-1">&times;</button>' +
+      '<button class="save-custom-btn" onclick="window.saveCustomMake()" title="Save make"><i class="ti ti-plus"></i></button>';
+
+    modelWrap.innerHTML =
+      '<input type="text" id="vModel" placeholder="Type or select model..." list="modelList" autocomplete="off" oninput="window.onModelInputChange()" />' +
+      '<datalist id="modelList"></datalist>' +
+      '<button class="field-clear" onclick="window.clearField(\'vModel\')" tabindex="-1">&times;</button>' +
+      '<button class="save-custom-btn" onclick="window.saveCustomModel()" title="Save model"><i class="ti ti-plus"></i></button>';
+  }
+}
+buildMakeModelUI();
+
+// ── Populate make ──
 var MAKE_LOGOS = {
   "Acura":         "https://img.logo.dev/acura.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
   "Alfa Romeo":    "https://img.logo.dev/alfaromeo.com?token=pk_NlWPjTaRRoKMrASNrCesBg",
@@ -969,49 +1161,104 @@ function updateMakeLogo(make) {
   }
 }
 
-// ── Populate make datalist ──
+// ── Populate make — handles both select (mobile) and datalist (desktop) ──
 function populateMakes(makesObj) {
-  var dl = document.getElementById('makeList');
-  dl.innerHTML = '';
-  Object.keys(makesObj).sort().forEach(function(m) {
-    var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
-  });
+  var makes = Object.keys(makesObj).sort();
+  if (isMobile) {
+    var sel = document.getElementById('vMake');
+    if (!sel || sel.tagName !== 'SELECT') return;
+    var current = sel.value;
+    sel.innerHTML = '<option value="">— Select make —</option>';
+    makes.filter(function(m){ return m !== 'Other'; }).forEach(function(m) {
+      var opt = document.createElement('option'); opt.value = m; opt.textContent = m; sel.appendChild(opt);
+    });
+    var otherOpt = document.createElement('option'); otherOpt.value = 'Other'; otherOpt.textContent = 'Other'; sel.appendChild(otherOpt);
+    if (current) sel.value = current;
+  } else {
+    var dl = document.getElementById('makeList');
+    if (!dl) return;
+    dl.innerHTML = '';
+    makes.forEach(function(m) {
+      var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+    });
+  }
 }
 
-// ── On make input → populate model datalist + logo ──
-window.onMakeInput = function() {
-  var make = document.getElementById('vMake').value.trim();
-  var dl = document.getElementById('modelList');
-  dl.innerHTML = '';
-  document.getElementById('vModel').value = '';
+function populateModels(models) {
+  if (isMobile) {
+    var sel = document.getElementById('vModel');
+    if (!sel || sel.tagName !== 'SELECT') return;
+    sel.innerHTML = '<option value="">— Select model —</option>';
+    sel.disabled = !models || models.length === 0;
+    if (models) {
+      models.filter(function(m){ return m !== 'Other'; }).forEach(function(m) {
+        var opt = document.createElement('option'); opt.value = m; opt.textContent = m; sel.appendChild(opt);
+      });
+      var otherOpt = document.createElement('option'); otherOpt.value = 'Other'; otherOpt.textContent = 'Other'; sel.appendChild(otherOpt);
+    }
+  } else {
+    var dl = document.getElementById('modelList');
+    if (!dl) return;
+    dl.innerHTML = '';
+    if (models) models.forEach(function(m) {
+      var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
+    });
+  }
+}
+
+// ── On make change (mobile select) ──
+window.onMakeChange = function() {
+  var make = document.getElementById('vMake').value;
   updateMakeLogo(make);
-  // Always repopulate make datalist so backspace still shows options
-  var makeDl = document.getElementById('makeList');
-  makeDl.innerHTML = '';
-  Object.keys(window.makesData).sort().forEach(function(m) {
-    var opt = document.createElement('option'); opt.value = m; makeDl.appendChild(opt);
-  });
+  var modelEl = document.getElementById('vModel');
+  if (modelEl && modelEl.tagName === 'SELECT') { modelEl.innerHTML = '<option value="">— Select model —</option>'; modelEl.disabled = true; }
   if (!make || !window.makesData[make]) return;
   var models = window.makesData[make];
   if (models.models) models = models.models;
   if (!Array.isArray(models)) return;
-  models.forEach(function(m) {
-    var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
-  });
+  populateModels(models);
+  if (modelEl && modelEl.tagName === 'SELECT') modelEl.disabled = false;
+};
+
+// ── On make input (desktop datalist) ──
+window.onMakeInput = function() {
+  var make = document.getElementById('vMake').value.trim();
+  updateMakeLogo(make);
+  // Repopulate make datalist (so backspace still shows all)
+  var makeDl = document.getElementById('makeList');
+  if (makeDl) {
+    makeDl.innerHTML = '';
+    Object.keys(window.makesData).sort().forEach(function(m) {
+      var opt = document.createElement('option'); opt.value = m; makeDl.appendChild(opt);
+    });
+  }
+  var modelEl = document.getElementById('vModel');
+  if (modelEl) modelEl.value = '';
+  if (!make || !window.makesData[make]) { populateModels([]); return; }
+  var models = window.makesData[make];
+  if (models.models) models = models.models;
+  if (!Array.isArray(models)) return;
+  populateModels(models);
 };
 
 // ── Clear make + model ──
 window.clearMake = function() {
-  document.getElementById('vMake').value = '';
-  document.getElementById('vModel').value = '';
-  document.getElementById('modelList').innerHTML = '';
+  var makeEl = document.getElementById('vMake');
+  var modelEl = document.getElementById('vModel');
+  if (makeEl) makeEl.value = '';
+  if (modelEl) {
+    if (modelEl.tagName === 'SELECT') { modelEl.innerHTML = '<option value="">— Select model —</option>'; modelEl.disabled = true; }
+    else { modelEl.value = ''; }
+  }
+  var dl = document.getElementById('modelList'); if (dl) dl.innerHTML = '';
   updateMakeLogo('');
 };
 
 // ── Save custom color ──
 window.saveCustomColor = async function() {
-  var color = document.getElementById('vColor').value.trim();
-  if (!color) { showToast('Enter a color first'); return; }
+  var color = isMobile ? prompt('Enter color to save:') : document.getElementById('vColor').value.trim();
+  if (!color || !color.trim()) { showToast('Enter a color first'); return; }
+  color = color.trim();
   try {
     const snap = await get(ref(db, 'colors'));
     var colors = snap.exists() ? snap.val() : [];
@@ -1045,10 +1292,12 @@ window.saveCustomMake = async function() {
 
 // ── Save custom model ──
 window.saveCustomModel = async function() {
-  var make = document.getElementById('vMake').value.trim();
-  var model = document.getElementById('vModel').value.trim();
-  if (!make) { showToast('Enter a make first'); return; }
-  if (!model) { showToast('Type a model name first'); return; }
+  var makeEl = document.getElementById('vMake');
+  var make = makeEl ? makeEl.value.trim() : '';
+  if (!make) { showToast('Select a make first'); return; }
+  var model = isMobile ? prompt('Enter model name to save under ' + make + ':') : document.getElementById('vModel').value.trim();
+  if (!model || !model.trim()) { showToast('Enter a model name'); return; }
+  model = model.trim();
   try {
     const snap = await get(ref(db, 'makes/' + make));
     var models = snap.exists() ? snap.val() : [];
@@ -1060,7 +1309,8 @@ window.saveCustomModel = async function() {
     models.push(model); models.sort();
     await set(ref(db, 'makes/' + make), models);
     window.makesData[make] = models;
-    window.onMakeInput();
+    populateModels(models);
+    if (!isMobile) window.onMakeInput();
     showToast('\u2713 Saved model "' + model + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -1072,9 +1322,9 @@ window.toggleOtherVehicle = function() {
   document.getElementById('otherVehicleBar').classList.toggle('active', window.isOtherVehicle);
   document.getElementById('vehicleFields').classList.toggle('on', window.isOtherVehicle);
   if (!window.isOtherVehicle) {
-    ['vColor','vYear','vMake','vModel'].forEach(function(id){ document.getElementById(id).value = ''; });
-    document.getElementById('modelList').innerHTML = '';
-    updateMakeLogo('');
+    window.clearMake();
+    var colorEl = document.getElementById('vColor'); if (colorEl) colorEl.value = '';
+    var yearEl = document.getElementById('vYear'); if (yearEl) yearEl.value = '';
   }
 };
 
@@ -1236,11 +1486,18 @@ function buildNatureString() {
     var qty = document.getElementById('acQuantity').value;
     if (qty) parts.push('x' + qty);
   }
-  if (VEHICLE_NATURES.indexOf(val) !== -1) {
-    var yr = document.getElementById('vYear').value.trim();
-    var col = document.getElementById('vColor').value.trim();
-    var make = document.getElementById('vMake').value.trim();
-    var model = document.getElementById('vModel').value.trim();    var veh = [yr, col, make, model].filter(Boolean).join(' ');
+  if (VEHICLE_NATURES.indexOf(val) !== -1 || (val === 'other' && window.isOtherVehicle)) {
+    var yr   = document.getElementById('vYear') ? document.getElementById('vYear').value.trim() : '';
+    var colEl = document.getElementById('vColor');
+    var col  = colEl ? colEl.value.trim() : '';
+    if (col === 'Other') col = (document.getElementById('customColor') ? document.getElementById('customColor').value.trim() : '') || 'Other';
+    var makeEl = document.getElementById('vMake');
+    var make = makeEl ? makeEl.value.trim() : '';
+    if (make === 'Other') make = (document.getElementById('customMake') ? document.getElementById('customMake').value.trim() : '') || 'Other';
+    var modelEl = document.getElementById('vModel');
+    var model = modelEl ? modelEl.value.trim() : '';
+    if (model === 'Other') model = (document.getElementById('customModel') ? document.getElementById('customModel').value.trim() : '') || 'Other';
+    var veh = [yr, col, make, model].filter(Boolean).join(' ');
     if (veh) parts.push(veh);
   }
   var notes = document.getElementById('notes').value.trim();
@@ -1359,16 +1616,11 @@ window.verifyLocation = function() {
 };
 
 window.clearForm = async function() {
-  ['phone','location','callerName','notes','vYear','vColor','vMake','vModel','acQuantity','floodEquipment','customNature'].forEach(function(id){
+  ['phone','location','callerName','notes','vYear','vColor','acQuantity','floodEquipment','customNature'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
-  document.getElementById('vMake').value = '';
-  document.getElementById('vModel').value = '';
-  document.getElementById('modelList').innerHTML = '';
-  updateMakeLogo('');
+  window.clearMake();
   document.getElementById('natureType').value = '';
-  // clear model datalist
-  document.getElementById('modelList').innerHTML = '';
 
   window.lockedInsideNote = '';
   window.isUrgent = false;
