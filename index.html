@@ -56,8 +56,18 @@ window.initAutocomplete = function() {
   .use-call-btn { background: #2E7D32; border: none; border-radius: 6px; padding: 4px 10px; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .use-call-btn:hover { background: #388E3C; }
 
-  /* ── Color swatch in select ── */
-  #vColor option { padding-left: 8px; }
+  /* ── Custom color dropdown ── */
+  .color-dropdown { position: relative; width: 100%; }
+  .color-dropdown-btn { width: 100%; padding: 11px 44px 11px 14px; border: 1.5px solid #E0CC80; border-radius: 10px; font-size: 14px; background: #FFFEF5; color: #1A1400; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 10px; text-align: left; transition: border-color 0.15s, box-shadow 0.15s; -webkit-appearance: none; }
+  .color-dropdown-btn:focus { outline: none; border-color: #C8A532; box-shadow: 0 0 0 3px rgba(200,165,50,0.16); }
+  .color-dropdown-btn .chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #C8A532; font-size: 14px; pointer-events: none; transition: transform 0.2s; }
+  .color-dropdown-btn.open .chevron { transform: translateY(-50%) rotate(180deg); }
+  .color-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid rgba(0,0,0,0.12); }
+  .color-dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #FFFFFF; border: 1.5px solid #E0CC80; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 500; overflow: hidden; max-height: 260px; overflow-y: auto; }
+  .color-dropdown-menu.open { display: block; }
+  .color-option { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; font-size: 14px; color: #1A1400; transition: background 0.1s; }
+  .color-option:hover { background: #F5ECC0; }
+  .color-option.selected { background: #F0E8C0; font-weight: 600; }
 
   /* ── Google Places Autocomplete overrides ── */
   .pac-container { border-radius: 10px; border: 1.5px solid #E0CC80; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin-top: 4px; background: #FFFEF5; z-index: 9999; }
@@ -909,24 +919,89 @@ function showToast(msg) {
 }
 
 // ── Populate color datalist ──
+window.toggleColorDropdown = function() {
+  var btn = document.getElementById('colorDropdownBtn');
+  var menu = document.getElementById('colorDropdownMenu');
+  if (!btn || !menu) return;
+  var isOpen = menu.classList.contains('open');
+  if (isOpen) {
+    menu.classList.remove('open');
+    btn.classList.remove('open');
+  } else {
+    menu.classList.add('open');
+    btn.classList.add('open');
+    // Close on outside click
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!document.getElementById('colorDropdown').contains(e.target)) {
+          menu.classList.remove('open');
+          btn.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 0);
+  }
+};
+
+window.selectDesktopColor = function(color) {
+  document.getElementById('vColor').value = color;
+  var label = document.getElementById('colorDropdownLabel');
+  var dot   = document.getElementById('colorDot');
+  var btn   = document.getElementById('colorDropdownBtn');
+  var menu  = document.getElementById('colorDropdownMenu');
+  if (label) label.textContent = color || '— Select color —';
+  if (dot) {
+    var c = COLOR_MAP[color];
+    if (c) {
+      dot.style.background = c;
+      dot.style.borderColor = (color==='White'||color==='Beige'||color==='Silver') ? '#CCC' : 'rgba(0,0,0,0.12)';
+      dot.style.display = 'inline-block';
+    } else { dot.style.display = 'none'; }
+  }
+  // Update selected state in menu
+  if (menu) menu.querySelectorAll('.color-option').forEach(function(o){
+    o.classList.toggle('selected', o.dataset.value === color);
+  });
+  if (btn) btn.classList.remove('open');
+  if (menu) menu.classList.remove('open');
+  // Show custom field if Other
+  var customWrap = document.getElementById('customColorWrap');
+  if (customWrap) customWrap.style.display = (color === 'Other') ? 'block' : 'none';
+};
+
+function buildDesktopColorMenu(colors) {
+  var menu = document.getElementById('colorDropdownMenu');
+  if (!menu) return;
+  menu.innerHTML = '';
+  colors.forEach(function(color) {
+    var opt = document.createElement('div');
+    opt.className = 'color-option';
+    opt.dataset.value = color;
+    var c = COLOR_MAP[color] || '#999';
+    var border = (color==='White'||color==='Beige'||color==='Silver') ? '#CCC' : 'rgba(0,0,0,0.12)';
+    opt.innerHTML =
+      '<span class="color-dot" style="background:' + c + ';border-color:' + border + ';' + (!COLOR_MAP[color] ? 'display:none;' : '') + '"></span>' +
+      color;
+    opt.addEventListener('click', function() { window.selectDesktopColor(color); });
+    menu.appendChild(opt);
+  });
+}
+
 function populateColors(colors) {
   var allColors = colors.filter(function(c){ return c !== 'Other'; }).concat(['Other']);
   window._colorOptions = allColors;
 
-  // Rebuild overlay if it exists (mobile)
   var overlay = document.getElementById('colorPickerOverlay');
   if (overlay) overlay.remove();
 
-  // Always populate the select (used on both mobile custom picker and desktop select)
-  var sel = document.getElementById('vColor');
-  if (sel && sel.tagName === 'SELECT') {
-    var current = sel.value;
-    sel.innerHTML = '<option value="">— Select color —</option>';
-    allColors.forEach(function(c) {
-      var opt = document.createElement('option');
-      opt.value = c; opt.textContent = c; sel.appendChild(opt);
-    });
-    if (current) sel.value = current;
+  if (isMobile) {
+    // Mobile: rebuild overlay from _colorOptions on next open
+  } else {
+    // Desktop: populate custom dropdown menu
+    buildDesktopColorMenu(allColors);
+    // Also keep hidden input in sync
+    var sel = document.getElementById('vColor');
+    // hidden input — no options needed
   }
 }
 
@@ -1085,13 +1160,21 @@ function buildMakeModelUI() {
       '<button class="field-clear" onclick="window.clearField(\'vModel\')" tabindex="-1">&times;</button>' +
       '<button class="save-custom-btn" onclick="window.saveCustomModel()" title="Save model"><i class="ti ti-plus"></i></button>';
   } else {
-    // Desktop: color as styled <select>, make/model as datalist
-    if (colorWrap) colorWrap.innerHTML =
-      '<select id="vColor" onchange="window.onColorChange()" style="padding-right:76px;">' +
-        '<option value="">— Select color —</option>' +
-      '</select>' +
-      '<button class="field-clear" onclick="window.clearField(\'vColor\')" tabindex="-1">&times;</button>' +
-      '<button class="save-custom-btn" onclick="window.saveCustomColor()" title="Save color"><i class="ti ti-plus"></i></button>';
+    // Desktop: custom color dropdown with swatches, make/model as datalist
+    if (colorWrap) {
+      colorWrap.innerHTML =
+        '<div class="color-dropdown" id="colorDropdown">' +
+          '<input type="hidden" id="vColor" />' +
+          '<button type="button" class="color-dropdown-btn" id="colorDropdownBtn" onclick="window.toggleColorDropdown()">' +
+            '<span class="color-dot" id="colorDot" style="display:none;"></span>' +
+            '<span id="colorDropdownLabel">— Select color —</span>' +
+            '<i class="ti ti-chevron-down chevron"></i>' +
+          '</button>' +
+          '<div class="color-dropdown-menu" id="colorDropdownMenu"></div>' +
+        '</div>' +
+        '<button class="save-custom-btn" onclick="window.saveCustomColor()" title="Save color" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);"><i class="ti ti-plus"></i></button>';
+      colorWrap.style.position = 'relative';
+    }
 
     makeWrap.innerHTML =
       '<input type="text" id="vMake" placeholder="Type or select make..." list="makeList" autocomplete="off" oninput="window.onMakeInput()" onfocus="window.onMakeInput()" />' +
