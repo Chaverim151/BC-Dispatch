@@ -26,6 +26,7 @@ window.initAutocomplete = function() {
     input.value = address;
     input.dataset.lat = place.geometry.location.lat();
     input.dataset.lng = place.geometry.location.lng();
+    if (window.updateZoneBadge) window.updateZoneBadge();
   });
 };
 </script>
@@ -148,6 +149,17 @@ window.initAutocomplete = function() {
   .loc-wrap input { padding-right: 72px; }
   .map-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #0F0E06; border: none; border-radius: 7px; padding: 6px 10px; color: #C8A532; font-size: 11px; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 3px; white-space: nowrap; font-weight: 600; }
   .map-btn:hover { background: #1E1C08; }
+
+  /* ── Zone badge ── */
+  .zone-badge { display: none; align-items: center; gap: 6px; margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; padding: 5px 10px; border-radius: 8px; }
+  .zone-badge.on { display: inline-flex; }
+  .zone-badge .zdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .zone-badge.zone-primary { background: #3A0A14; color: #F06090; border: 1px solid #8B2050; }
+  .zone-badge.zone-primary .zdot { background: #E0326E; }
+  .zone-badge.zone-secondary { background: #2A1E00; color: #F9C24A; border: 1px solid #8B6A00; }
+  .zone-badge.zone-secondary .zdot { background: #F9A825; }
+  .zone-badge.zone-outside { background: #16180F; color: #9AA080; border: 1px solid #3A3E28; }
+  .zone-badge.zone-outside .zdot { background: #7A8060; }
 
   /* ── Section subheader ── */
   .sub-hdr { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: #8B6E1A; letter-spacing: 1.5px; text-transform: uppercase; margin: 1.2rem 0 0.9rem; }
@@ -394,9 +406,13 @@ window.initAutocomplete = function() {
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
         <div class="inp-wrap loc-wrap">
-          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" oninput="document.getElementById('location').dataset.lat=''; document.getElementById('location').dataset.lng='';" />
+          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" oninput="document.getElementById('location').dataset.lat=''; document.getElementById('location').dataset.lng=''; window.updateZoneBadge();" />
           <button class="field-clear" onclick="window.clearField('location')" tabindex="-1" style="right:56px;">&times;</button>
           <button class="map-btn" onclick="window.verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
+        </div>
+        <div id="zoneBadge" class="zone-badge">
+          <span class="zdot"></span>
+          <span id="zoneBadgeText"></span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
           <button class="paste-maps-btn" onclick="window.pasteMapsUrl()" style="margin-top:0;">
@@ -524,9 +540,11 @@ window.initAutocomplete = function() {
           </div>
           <div>
             <div class="lbl"><i class="ti ti-calendar"></i> Year</div>
-            <div class="inp-wrap">
-              <input type="text" id="vYear" placeholder="2022" maxlength="4" />
-              <button class="field-clear" onclick="window.clearField('vYear')" tabindex="-1">&times;</button>
+            <div class="inp-wrap" id="yearInputWrap">
+              <!-- Populated by JS based on device -->
+            </div>
+            <div id="customYearWrap" style="display:none;margin-top:6px;">
+              <input type="text" id="customYear" placeholder="Enter year..." maxlength="4" style="font-size:14px;" />
             </div>
           </div>
         </div>
@@ -683,6 +701,58 @@ window.makesData = {
   "Volkswagen":["Atlas","Atlas Cross Sport","Golf","ID.4","Jetta","Passat","Taos","Tiguan"],
   "Volvo":["C40","S60","S90","V60","V90","XC40","XC60","XC90"],
   "Other":["Other"]
+};
+
+// ── Coverage zone polygons (from Bergen Dispatch Map, "Coverage Areas" layer) ──
+// Coordinates are [lng, lat] pairs, matching KML order.
+var ZONE_PRIMARY = [[-74.0344763,40.9038942],[-74.0373013,40.9030386],[-74.0387022,40.9011974],[-74.0372547,40.8973529],[-74.0417404,40.8938154],[-74.0436928,40.8909594],[-74.0423515,40.8887529],[-74.0399214,40.8881364],[-74.0418889,40.884543],[-74.0442855,40.8817932],[-74.0111374,40.8698672],[-73.9871874,40.9005629],[-73.9835002,40.9304979],[-74.0361936,40.9305771],[-74.0390168,40.9236826],[-74.0399411,40.9196857],[-74.0363158,40.9144894],[-74.034632,40.9139019],[-74.033635,40.9140278],[-74.0313704,40.9082575],[-74.0335359,40.9070627],[-74.0344763,40.9038942]];
+var ZONE_SECONDARY = [[-74.0291089,41.0376667],[-74.1219972,41.0423333],[-74.1727379,41.1160838],[-74.234309,41.1428502],[-74.3015898,40.9851222],[-74.2703464,40.9119992],[-74.174704,40.9536278],[-74.147373,40.9493056],[-74.1477267,40.9426809],[-74.1429933,40.9414829],[-74.1380456,40.9341255],[-74.1410543,40.9295969],[-74.1405229,40.9255398],[-74.13846,40.9239759],[-74.1357105,40.9242926],[-74.1297317,40.9226961],[-74.1289322,40.9199123],[-74.1293344,40.9172582],[-74.1322669,40.9135901],[-74.1325427,40.9121643],[-74.1301353,40.9062249],[-74.1293344,40.9028581],[-74.11583,40.9055696],[-74.0935995,40.904989],[-74.0721446,40.8974147],[-74.0484876,40.8714289],[-74.0425641,40.870096],[-74.0322484,40.8582694],[-74.023837,40.8463236],[-74.0210049,40.8413818],[-74.0272965,40.8175847],[-73.9883497,40.8011421],[-73.969129,40.8301545],[-73.968569,40.8399332],[-73.9586825,40.8523749],[-73.9630543,40.8532758],[-73.9627322,40.854339],[-73.9584188,40.85341],[-73.930558,40.9052],[-73.8997328,40.9961672],[-74.0291089,41.0376667]];
+
+// Ray-casting point-in-polygon. poly = array of [lng, lat].
+function pointInPoly(lng, lat, poly) {
+  var inside = false;
+  for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    var xi = poly[i][0], yi = poly[i][1];
+    var xj = poly[j][0], yj = poly[j][1];
+    var intersect = ((yi > lat) !== (yj > lat)) &&
+      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Returns 'primary', 'secondary', or 'outside'
+window.getZone = function(lat, lng) {
+  if (lat == null || lng == null || lat === '' || lng === '') return null;
+  lat = parseFloat(lat); lng = parseFloat(lng);
+  if (isNaN(lat) || isNaN(lng)) return null;
+  if (pointInPoly(lng, lat, ZONE_PRIMARY)) return 'primary';
+  if (pointInPoly(lng, lat, ZONE_SECONDARY)) return 'secondary';
+  return 'outside';
+};
+
+window.updateZoneBadge = function() {
+  var locEl = document.getElementById('location');
+  var badge = document.getElementById('zoneBadge');
+  var text = document.getElementById('zoneBadgeText');
+  var lat = locEl.dataset.lat, lng = locEl.dataset.lng;
+  var zone = window.getZone(lat, lng);
+
+  badge.classList.remove('zone-primary', 'zone-secondary', 'zone-outside', 'on');
+  window.currentZone = zone;
+
+  if (!zone) return;
+
+  if (zone === 'primary') {
+    badge.classList.add('zone-primary', 'on');
+    text.textContent = 'Primary Zone — Bergen County covers this call';
+  } else if (zone === 'secondary') {
+    badge.classList.add('zone-secondary', 'on');
+    text.textContent = 'Secondary Zone — Interstate dispatches only if requested';
+  } else {
+    badge.classList.add('zone-outside', 'on');
+    text.textContent = 'Outside Bergen coverage area';
+  }
 };
 
 // ── Telzio live call polling ──
@@ -891,11 +961,17 @@ window.pasteMapsUrl = async function() {
   if (coords) {
     var loc = coords.lat + ', ' + coords.lng;
     document.getElementById('location').value = loc;
+    document.getElementById('location').dataset.lat = coords.lat;
+    document.getElementById('location').dataset.lng = coords.lng;
     updateMapsLink();
+    window.updateZoneBadge();
     showToast('\u2713 Coordinates set: ' + loc);
   } else if (url.includes('goo.gl') || url.includes('maps.app') || url.includes('maps.google')) {
     document.getElementById('location').value = url;
+    document.getElementById('location').dataset.lat = '';
+    document.getElementById('location').dataset.lng = '';
     updateMapsLink();
+    window.updateZoneBadge();
     showToast('Link pasted as location');
   } else {
     showToast('Could not extract coordinates from that link');
@@ -908,6 +984,10 @@ window.clearField = function(id) {
   if (!el) return;
   el.value = '';
   el.focus();
+  if (id === 'location') {
+    el.dataset.lat = ''; el.dataset.lng = '';
+    window.updateZoneBadge();
+  }
 };
 
 // ── Toast ──
@@ -1106,35 +1186,166 @@ window.setColor = function(color) {
   if (customWrap) customWrap.style.display = (color === 'Other') ? 'block' : 'none';
 };
 
-// ── Handle Other for make/model selects ──
-window.onMakeChange = function() {
-  var make = document.getElementById('vMake').value;
-  var customWrap = document.getElementById('customMakeWrap');
-  if (customWrap) customWrap.style.display = (make === 'Other') ? 'block' : 'none';
-  if (make === 'Other') { updateMakeLogo(''); return; }
-  updateMakeLogo(make);
-  var modelEl = document.getElementById('vModel');
-  if (modelEl && modelEl.tagName === 'SELECT') { modelEl.innerHTML = '<option value="">— Select model —</option>'; modelEl.disabled = true; }
-  var customModelWrap = document.getElementById('customModelWrap');
-  if (customModelWrap) customModelWrap.style.display = 'none';
-  if (!make || !window.makesData[make]) return;
-  var models = window.makesData[make];
-  if (models.models) models = models.models;
-  if (!Array.isArray(models)) return;
-  populateModels(models);
-  if (modelEl && modelEl.tagName === 'SELECT') modelEl.disabled = false;
+// ── Year dropdown (same pattern/CSS as the color dropdown) ──
+function buildYearOptions() {
+  var currentYear = new Date().getFullYear();
+  var years = [];
+  for (var y = currentYear + 1; y >= 1980; y--) years.push(String(y));
+  years.push('Other');
+  return years;
+}
+window._yearOptions = [];
+
+// Desktop: custom dropdown menu (reuses .color-dropdown-menu / .color-option CSS)
+function buildYearDropdownMenu(years) {
+  var menu = document.getElementById('yearDropdownMenu');
+  if (!menu) return;
+  menu.innerHTML = '';
+  years.forEach(function(y) {
+    var opt = document.createElement('div');
+    opt.className = 'color-option';
+    opt.dataset.value = y;
+    opt.textContent = y;
+    opt.addEventListener('click', function() { window.selectYear(y); });
+    menu.appendChild(opt);
+  });
+}
+
+window.toggleYearDropdown = function() {
+  var btn = document.getElementById('yearDropdownBtn');
+  var menu = document.getElementById('yearDropdownMenu');
+  if (!btn || !menu) return;
+  var isOpen = menu.classList.contains('open');
+  if (isOpen) {
+    menu.classList.remove('open');
+    btn.classList.remove('open');
+  } else {
+    menu.classList.add('open');
+    btn.classList.add('open');
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!document.getElementById('yearDropdown').contains(e.target)) {
+          menu.classList.remove('open');
+          btn.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 0);
+  }
 };
 
-window.onModelChange = function() {
-  var model = document.getElementById('vModel') ? document.getElementById('vModel').value : '';
-  var customWrap = document.getElementById('customModelWrap');
-  if (customWrap) customWrap.style.display = (model === 'Other') ? 'block' : 'none';
+window.selectYear = function(year) {
+  document.getElementById('vYear').value = year;
+  var label = document.getElementById('yearDropdownLabel');
+  var btn = document.getElementById('yearDropdownBtn');
+  var menu = document.getElementById('yearDropdownMenu');
+  if (label) label.textContent = year || '— Select year —';
+  if (menu) menu.querySelectorAll('.color-option').forEach(function(o){
+    o.classList.toggle('selected', o.dataset.value === year);
+  });
+  if (btn) btn.classList.remove('open');
+  if (menu) menu.classList.remove('open');
+  var customWrap = document.getElementById('customYearWrap');
+  if (customWrap) customWrap.style.display = (year === 'Other') ? 'block' : 'none';
+};
+
+// Mobile: bottom-sheet overlay (same pattern as the color picker)
+function buildYearSelect(wrap) {
+  wrap.innerHTML =
+    '<button type="button" id="yearPickerBtn" onclick="window.openYearPicker()" style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #E0CC80;border-radius:10px;font-size:14px;background:#FFFEF5;color:#1A1400;font-family:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px;-webkit-appearance:none;">' +
+      '<span id="yearPickerLabel" style="flex:1;">— Select year —</span>' +
+      '<i class="ti ti-chevron-down" style="color:#C8A532;font-size:14px;position:absolute;right:12px;"></i>' +
+    '</button>' +
+    '<input type="hidden" id="vYear" />';
+  wrap.style.position = 'relative';
+}
+
+window.openYearPicker = function() {
+  var overlay = document.getElementById('yearPickerOverlay');
+  if (overlay) { overlay.style.display = 'flex'; return; }
+
+  overlay = document.createElement('div');
+  overlay.id = 'yearPickerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#FDFBF0;width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:1.25rem;max-height:70vh;overflow-y:auto;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:15px;font-weight:600;color:#1A1400;margin-bottom:1rem;';
+  title.textContent = 'Select Year';
+  sheet.appendChild(title);
+
+  window._yearOptions.forEach(function(year) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'display:flex;align-items:center;width:100%;padding:10px 12px;border:none;background:transparent;font-size:15px;color:#1A1400;font-family:inherit;cursor:pointer;border-radius:8px;text-align:left;';
+    btn.textContent = year;
+    btn.addEventListener('click', function() {
+      window.setYear(year);
+      overlay.style.display = 'none';
+    });
+    btn.addEventListener('mouseenter', function(){ btn.style.background = '#F5ECC0'; });
+    btn.addEventListener('mouseleave', function(){ btn.style.background = 'transparent'; });
+    sheet.appendChild(btn);
+  });
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.style.display='none'; });
+  document.body.appendChild(overlay);
+};
+
+window.setYear = function(year) {
+  document.getElementById('vYear').value = year;
+  var label = document.getElementById('yearPickerLabel');
+  if (label) label.textContent = year || '— Select year —';
+  var customWrap = document.getElementById('customYearWrap');
+  if (customWrap) customWrap.style.display = (year === 'Other') ? 'block' : 'none';
+};
+
+// Build the year picker UI for the current device, and reset it to blank
+function buildYearUI() {
+  var yearWrap = document.getElementById('yearInputWrap');
+  if (!yearWrap) return;
+  var years = buildYearOptions();
+  window._yearOptions = years;
+
+  if (isMobile) {
+    buildYearSelect(yearWrap);
+  } else {
+    yearWrap.innerHTML =
+      '<div class="color-dropdown" id="yearDropdown">' +
+        '<input type="hidden" id="vYear" />' +
+        '<button type="button" class="color-dropdown-btn" id="yearDropdownBtn" onclick="window.toggleYearDropdown()">' +
+          '<span id="yearDropdownLabel">— Select year —</span>' +
+          '<i class="ti ti-chevron-down chevron"></i>' +
+        '</button>' +
+        '<div class="color-dropdown-menu" id="yearDropdownMenu"></div>' +
+      '</div>';
+    buildYearDropdownMenu(years);
+  }
+}
+
+window.resetYearUI = function() {
+  var el = document.getElementById('vYear');
+  if (el) el.value = '';
+  if (isMobile) {
+    var lbl = document.getElementById('yearPickerLabel');
+    if (lbl) lbl.textContent = '— Select year —';
+  } else {
+    var lbl2 = document.getElementById('yearDropdownLabel');
+    if (lbl2) lbl2.textContent = '— Select year —';
+    var menu = document.getElementById('yearDropdownMenu');
+    if (menu) menu.querySelectorAll('.color-option').forEach(function(o){ o.classList.remove('selected'); });
+  }
+  var customWrap = document.getElementById('customYearWrap');
+  if (customWrap) customWrap.style.display = 'none';
+  var customYear = document.getElementById('customYear');
+  if (customYear) customYear.value = '';
 };
 
 // ── Detect mobile (touch device) ──
 var isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-// ── Build make/model UI based on device ──
+// ── Build make/model UI based on device (same dropdown pattern as color/year) ──
 function buildMakeModelUI() {
   var makeWrap  = document.getElementById('makeInputWrap');
   var modelWrap = document.getElementById('modelInputWrap');
@@ -1145,22 +1356,26 @@ function buildMakeModelUI() {
     if (colorWrap) buildColorSelect([], colorWrap);
 
     makeWrap.innerHTML =
-      '<select id="vMake" onchange="window.onMakeChange()" style="padding-right:76px;">' +
-        '<option value="">— Select make —</option>' +
-        '<option value="Other">Other</option>' +
-      '</select>' +
+      '<button type="button" id="makePickerBtn" onclick="window.openMakePicker()" style="width:100%;padding:11px 76px 11px 14px;border:1.5px solid #E0CC80;border-radius:10px;font-size:14px;background:#FFFEF5;color:#1A1400;font-family:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;-webkit-appearance:none;">' +
+        '<span id="makePickerLabel" style="flex:1;">— Select make —</span>' +
+        '<i class="ti ti-chevron-down" style="color:#C8A532;font-size:14px;position:absolute;right:44px;"></i>' +
+      '</button>' +
+      '<input type="hidden" id="vMake" />' +
       '<button class="field-clear" onclick="window.clearMake()" tabindex="-1">&times;</button>' +
       '<button class="save-custom-btn" onclick="window.saveCustomMake()" title="Save make"><i class="ti ti-plus"></i></button>';
+    makeWrap.style.position = 'relative';
 
     modelWrap.innerHTML =
-      '<select id="vModel" disabled onchange="window.onModelChange()" style="padding-right:76px;">' +
-        '<option value="">— Select model —</option>' +
-        '<option value="Other">Other</option>' +
-      '</select>' +
-      '<button class="field-clear" onclick="window.clearField(\'vModel\')" tabindex="-1">&times;</button>' +
+      '<button type="button" id="modelPickerBtn" onclick="window.openModelPicker()" style="width:100%;padding:11px 76px 11px 14px;border:1.5px solid #E0CC80;border-radius:10px;font-size:14px;background:#FFFEF5;color:#1A1400;font-family:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;-webkit-appearance:none;opacity:0.5;">' +
+        '<span id="modelPickerLabel" style="flex:1;">— Select model —</span>' +
+        '<i class="ti ti-chevron-down" style="color:#C8A532;font-size:14px;position:absolute;right:44px;"></i>' +
+      '</button>' +
+      '<input type="hidden" id="vModel" />' +
+      '<button class="field-clear" onclick="window.clearModel()" tabindex="-1">&times;</button>' +
       '<button class="save-custom-btn" onclick="window.saveCustomModel()" title="Save model"><i class="ti ti-plus"></i></button>';
+    modelWrap.style.position = 'relative';
   } else {
-    // Desktop: custom color dropdown with swatches, make/model as datalist
+    // Desktop: custom dropdown with swatches for color, plain custom dropdowns for make/model
     if (colorWrap) {
       colorWrap.innerHTML =
         '<div class="color-dropdown" id="colorDropdown">' +
@@ -1177,19 +1392,34 @@ function buildMakeModelUI() {
     }
 
     makeWrap.innerHTML =
-      '<input type="text" id="vMake" placeholder="Type or select make..." list="makeList" autocomplete="off" oninput="window.onMakeInput()" onfocus="window.onMakeInput()" />' +
-      '<datalist id="makeList"></datalist>' +
+      '<div class="color-dropdown" id="makeDropdown" style="flex:1;">' +
+        '<input type="hidden" id="vMake" />' +
+        '<button type="button" class="color-dropdown-btn" id="makeDropdownBtn" onclick="window.toggleMakeDropdown()" style="padding-right:96px;">' +
+          '<span id="makeDropdownLabel">— Select make —</span>' +
+          '<i class="ti ti-chevron-down chevron" style="right:78px;"></i>' +
+        '</button>' +
+        '<div class="color-dropdown-menu" id="makeDropdownMenu"></div>' +
+      '</div>' +
       '<button class="field-clear" onclick="window.clearMake()" tabindex="-1">&times;</button>' +
       '<button class="save-custom-btn" onclick="window.saveCustomMake()" title="Save make"><i class="ti ti-plus"></i></button>';
+    makeWrap.style.position = 'relative';
 
     modelWrap.innerHTML =
-      '<input type="text" id="vModel" placeholder="Type or select model..." list="modelList" autocomplete="off" oninput="window.onModelInputChange()" />' +
-      '<datalist id="modelList"></datalist>' +
-      '<button class="field-clear" onclick="window.clearField(\'vModel\')" tabindex="-1">&times;</button>' +
+      '<div class="color-dropdown" id="modelDropdown" style="flex:1;">' +
+        '<input type="hidden" id="vModel" />' +
+        '<button type="button" class="color-dropdown-btn" id="modelDropdownBtn" onclick="window.toggleModelDropdown()" style="padding-right:96px;opacity:0.5;cursor:not-allowed;">' +
+          '<span id="modelDropdownLabel">— Select model —</span>' +
+          '<i class="ti ti-chevron-down chevron" style="right:78px;"></i>' +
+        '</button>' +
+        '<div class="color-dropdown-menu" id="modelDropdownMenu"></div>' +
+      '</div>' +
+      '<button class="field-clear" onclick="window.clearModel()" tabindex="-1">&times;</button>' +
       '<button class="save-custom-btn" onclick="window.saveCustomModel()" title="Save model"><i class="ti ti-plus"></i></button>';
+    modelWrap.style.position = 'relative';
   }
 }
 buildMakeModelUI();
+buildYearUI();
 
 // ── Populate make ──
 var MAKE_LOGOS = {
@@ -1244,96 +1474,273 @@ function updateMakeLogo(make) {
   }
 }
 
-// ── Populate make — handles both select (mobile) and datalist (desktop) ──
-function populateMakes(makesObj) {
-  var makes = Object.keys(makesObj).sort();
-  if (isMobile) {
-    var sel = document.getElementById('vMake');
-    if (!sel || sel.tagName !== 'SELECT') return;
-    var current = sel.value;
-    sel.innerHTML = '<option value="">— Select make —</option>';
-    makes.filter(function(m){ return m !== 'Other'; }).forEach(function(m) {
-      var opt = document.createElement('option'); opt.value = m; opt.textContent = m; sel.appendChild(opt);
-    });
-    var otherOpt = document.createElement('option'); otherOpt.value = 'Other'; otherOpt.textContent = 'Other'; sel.appendChild(otherOpt);
-    if (current) sel.value = current;
-  } else {
-    var dl = document.getElementById('makeList');
-    if (!dl) return;
-    dl.innerHTML = '';
-    makes.forEach(function(m) {
-      var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
-    });
-  }
+// ── Make dropdown — same pattern as color/year ──
+window._makeOptions = [];
+
+function buildMakeDropdownMenu(makes) {
+  var menu = document.getElementById('makeDropdownMenu');
+  if (!menu) return;
+  menu.innerHTML = '';
+  makes.forEach(function(m) {
+    var opt = document.createElement('div');
+    opt.className = 'color-option';
+    opt.dataset.value = m;
+    opt.textContent = m;
+    opt.addEventListener('click', function() { window.selectMake(m); });
+    menu.appendChild(opt);
+  });
 }
 
-function populateModels(models) {
-  if (isMobile) {
-    var sel = document.getElementById('vModel');
-    if (!sel || sel.tagName !== 'SELECT') return;
-    sel.innerHTML = '<option value="">— Select model —</option>';
-    sel.disabled = !models || models.length === 0;
-    if (models) {
-      models.filter(function(m){ return m !== 'Other'; }).forEach(function(m) {
-        var opt = document.createElement('option'); opt.value = m; opt.textContent = m; sel.appendChild(opt);
+window.toggleMakeDropdown = function() {
+  var btn = document.getElementById('makeDropdownBtn');
+  var menu = document.getElementById('makeDropdownMenu');
+  if (!btn || !menu) return;
+  var isOpen = menu.classList.contains('open');
+  if (isOpen) {
+    menu.classList.remove('open');
+    btn.classList.remove('open');
+  } else {
+    menu.classList.add('open');
+    btn.classList.add('open');
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!document.getElementById('makeDropdown').contains(e.target)) {
+          menu.classList.remove('open');
+          btn.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
       });
-      var otherOpt = document.createElement('option'); otherOpt.value = 'Other'; otherOpt.textContent = 'Other'; sel.appendChild(otherOpt);
-    }
-  } else {
-    var dl = document.getElementById('modelList');
-    if (!dl) return;
-    dl.innerHTML = '';
-    if (models) models.forEach(function(m) {
-      var opt = document.createElement('option'); opt.value = m; dl.appendChild(opt);
-    });
+    }, 0);
   }
-}
-
-// ── On make change (mobile select) ──
-window.onMakeChange = function() {
-  var make = document.getElementById('vMake').value;
-  updateMakeLogo(make);
-  var modelEl = document.getElementById('vModel');
-  if (modelEl && modelEl.tagName === 'SELECT') { modelEl.innerHTML = '<option value="">— Select model —</option>'; modelEl.disabled = true; }
-  if (!make || !window.makesData[make]) return;
-  var models = window.makesData[make];
-  if (models.models) models = models.models;
-  if (!Array.isArray(models)) return;
-  populateModels(models);
-  if (modelEl && modelEl.tagName === 'SELECT') modelEl.disabled = false;
 };
 
-// ── On make input (desktop datalist) ──
-window.onMakeInput = function() {
-  var make = document.getElementById('vMake').value.trim();
-  updateMakeLogo(make);
-  // Repopulate make datalist (so backspace still shows all)
-  var makeDl = document.getElementById('makeList');
-  if (makeDl) {
-    makeDl.innerHTML = '';
-    Object.keys(window.makesData).sort().forEach(function(m) {
-      var opt = document.createElement('option'); opt.value = m; makeDl.appendChild(opt);
+window.openMakePicker = function() {
+  var overlay = document.getElementById('makePickerOverlay');
+  if (overlay) { overlay.style.display = 'flex'; return; }
+
+  overlay = document.createElement('div');
+  overlay.id = 'makePickerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#FDFBF0;width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:1.25rem;max-height:70vh;overflow-y:auto;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:15px;font-weight:600;color:#1A1400;margin-bottom:1rem;';
+  title.textContent = 'Select Make';
+  sheet.appendChild(title);
+
+  window._makeOptions.forEach(function(make) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'display:flex;align-items:center;width:100%;padding:10px 12px;border:none;background:transparent;font-size:15px;color:#1A1400;font-family:inherit;cursor:pointer;border-radius:8px;text-align:left;';
+    btn.textContent = make;
+    btn.addEventListener('click', function() {
+      window.selectMake(make);
+      overlay.style.display = 'none';
     });
+    btn.addEventListener('mouseenter', function(){ btn.style.background = '#F5ECC0'; });
+    btn.addEventListener('mouseleave', function(){ btn.style.background = 'transparent'; });
+    sheet.appendChild(btn);
+  });
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.style.display='none'; });
+  document.body.appendChild(overlay);
+};
+
+// ── Model dropdown — same pattern, disabled until a make is chosen ──
+window._modelOptions = [];
+window._modelEnabled = false;
+
+function buildModelDropdownMenu(models) {
+  var menu = document.getElementById('modelDropdownMenu');
+  if (!menu) return;
+  menu.innerHTML = '';
+  models.forEach(function(m) {
+    var opt = document.createElement('div');
+    opt.className = 'color-option';
+    opt.dataset.value = m;
+    opt.textContent = m;
+    opt.addEventListener('click', function() { window.selectModel(m); });
+    menu.appendChild(opt);
+  });
+}
+
+function populateModelOptions(models) {
+  var withOther = (models && models.length) ? models.filter(function(m){ return m !== 'Other'; }).concat(['Other']) : [];
+  window._modelOptions = withOther;
+  window._modelEnabled = withOther.length > 0;
+
+  var btn = document.getElementById(isMobile ? 'modelPickerBtn' : 'modelDropdownBtn');
+  if (btn) {
+    btn.style.opacity = window._modelEnabled ? '' : '0.5';
+    btn.style.cursor = window._modelEnabled ? 'pointer' : 'not-allowed';
   }
-  var modelEl = document.getElementById('vModel');
-  if (modelEl) modelEl.value = '';
-  if (!make || !window.makesData[make]) { populateModels([]); return; }
-  var models = window.makesData[make];
-  if (models.models) models = models.models;
-  if (!Array.isArray(models)) return;
-  populateModels(models);
+  if (!isMobile) buildModelDropdownMenu(withOther);
+}
+
+window.toggleModelDropdown = function() {
+  if (!window._modelEnabled) { showToast('Select a make first'); return; }
+  var btn = document.getElementById('modelDropdownBtn');
+  var menu = document.getElementById('modelDropdownMenu');
+  if (!btn || !menu) return;
+  var isOpen = menu.classList.contains('open');
+  if (isOpen) {
+    menu.classList.remove('open');
+    btn.classList.remove('open');
+  } else {
+    menu.classList.add('open');
+    btn.classList.add('open');
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!document.getElementById('modelDropdown').contains(e.target)) {
+          menu.classList.remove('open');
+          btn.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 0);
+  }
+};
+
+window.openModelPicker = function() {
+  if (!window._modelEnabled) { showToast('Select a make first'); return; }
+  var overlay = document.getElementById('modelPickerOverlay');
+  if (overlay) { overlay.style.display = 'flex'; return; }
+
+  overlay = document.createElement('div');
+  overlay.id = 'modelPickerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#FDFBF0;width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:1.25rem;max-height:70vh;overflow-y:auto;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:15px;font-weight:600;color:#1A1400;margin-bottom:1rem;';
+  title.textContent = 'Select Model';
+  sheet.appendChild(title);
+
+  window._modelOptions.forEach(function(model) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'display:flex;align-items:center;width:100%;padding:10px 12px;border:none;background:transparent;font-size:15px;color:#1A1400;font-family:inherit;cursor:pointer;border-radius:8px;text-align:left;';
+    btn.textContent = model;
+    btn.addEventListener('click', function() {
+      window.selectModel(model);
+      overlay.style.display = 'none';
+    });
+    btn.addEventListener('mouseenter', function(){ btn.style.background = '#F5ECC0'; });
+    btn.addEventListener('mouseleave', function(){ btn.style.background = 'transparent'; });
+    sheet.appendChild(btn);
+  });
+
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.style.display='none'; });
+  document.body.appendChild(overlay);
+};
+
+// ── Populate make dropdown/overlay options ──
+function populateMakes(makesObj) {
+  var makes = Object.keys(makesObj).sort();
+  var withOther = makes.filter(function(m){ return m !== 'Other'; }).concat(['Other']);
+  window._makeOptions = withOther;
+  if (!isMobile) buildMakeDropdownMenu(withOther);
+};
+
+// ── Select a make: updates label/menu, logo, and dependent model list ──
+window.selectMake = function(make) {
+  document.getElementById('vMake').value = make;
+  if (isMobile) {
+    var lbl = document.getElementById('makePickerLabel');
+    if (lbl) lbl.textContent = make || '— Select make —';
+  } else {
+    var lbl2 = document.getElementById('makeDropdownLabel');
+    if (lbl2) lbl2.textContent = make || '— Select make —';
+    var menu = document.getElementById('makeDropdownMenu');
+    if (menu) menu.querySelectorAll('.color-option').forEach(function(o){
+      o.classList.toggle('selected', o.dataset.value === make);
+    });
+    var btn = document.getElementById('makeDropdownBtn');
+    if (btn) btn.classList.remove('open');
+    if (menu) menu.classList.remove('open');
+  }
+
+  var customWrap = document.getElementById('customMakeWrap');
+  if (customWrap) customWrap.style.display = (make === 'Other') ? 'block' : 'none';
+  updateMakeLogo(make === 'Other' ? '' : make);
+
+  window.resetModelUI();
+  if (make && make !== 'Other' && window.makesData[make]) {
+    var models = window.makesData[make];
+    if (models.models) models = models.models;
+    if (Array.isArray(models)) { populateModelOptions(models); return; }
+  }
+  populateModelOptions([]);
+};
+
+// ── Select a model: updates label/menu ──
+window.selectModel = function(model) {
+  document.getElementById('vModel').value = model;
+  if (isMobile) {
+    var lbl = document.getElementById('modelPickerLabel');
+    if (lbl) lbl.textContent = model || '— Select model —';
+  } else {
+    var lbl2 = document.getElementById('modelDropdownLabel');
+    if (lbl2) lbl2.textContent = model || '— Select model —';
+    var menu = document.getElementById('modelDropdownMenu');
+    if (menu) menu.querySelectorAll('.color-option').forEach(function(o){
+      o.classList.toggle('selected', o.dataset.value === model);
+    });
+    var btn = document.getElementById('modelDropdownBtn');
+    if (btn) btn.classList.remove('open');
+    if (menu) menu.classList.remove('open');
+  }
+  var customWrap = document.getElementById('customModelWrap');
+  if (customWrap) customWrap.style.display = (model === 'Other') ? 'block' : 'none';
+};
+
+// ── Reset model UI back to blank/disabled (without touching make) ──
+window.resetModelUI = function() {
+  var el = document.getElementById('vModel');
+  if (el) el.value = '';
+  if (isMobile) {
+    var lbl = document.getElementById('modelPickerLabel');
+    if (lbl) lbl.textContent = '— Select model —';
+  } else {
+    var lbl2 = document.getElementById('modelDropdownLabel');
+    if (lbl2) lbl2.textContent = '— Select model —';
+    var menu = document.getElementById('modelDropdownMenu');
+    if (menu) menu.querySelectorAll('.color-option').forEach(function(o){ o.classList.remove('selected'); });
+  }
+  var customWrap = document.getElementById('customModelWrap');
+  if (customWrap) customWrap.style.display = 'none';
+  var customModel = document.getElementById('customModel');
+  if (customModel) customModel.value = '';
+};
+
+// ── Clear model only (field-clear × button) ──
+window.clearModel = function() {
+  window.resetModelUI();
+  populateModelOptions(window._modelEnabled ? window._modelOptions.filter(function(m){ return m !== 'Other'; }) : []);
 };
 
 // ── Clear make + model ──
 window.clearMake = function() {
   var makeEl = document.getElementById('vMake');
-  var modelEl = document.getElementById('vModel');
   if (makeEl) makeEl.value = '';
-  if (modelEl) {
-    if (modelEl.tagName === 'SELECT') { modelEl.innerHTML = '<option value="">— Select model —</option>'; modelEl.disabled = true; }
-    else { modelEl.value = ''; }
+  if (isMobile) {
+    var lbl = document.getElementById('makePickerLabel');
+    if (lbl) lbl.textContent = '— Select make —';
+  } else {
+    var lbl2 = document.getElementById('makeDropdownLabel');
+    if (lbl2) lbl2.textContent = '— Select make —';
+    var menu = document.getElementById('makeDropdownMenu');
+    if (menu) menu.querySelectorAll('.color-option').forEach(function(o){ o.classList.remove('selected'); });
   }
-  var dl = document.getElementById('modelList'); if (dl) dl.innerHTML = '';
+  var customMakeWrap = document.getElementById('customMakeWrap');
+  if (customMakeWrap) customMakeWrap.style.display = 'none';
+  var customMake = document.getElementById('customMake');
+  if (customMake) customMake.value = '';
+
+  window.resetModelUI();
+  populateModelOptions([]);
   updateMakeLogo('');
 };
 
@@ -1360,6 +1767,10 @@ window.saveCustomColor = async function() {
 // ── Save custom make ──
 window.saveCustomMake = async function() {
   var make = document.getElementById('vMake').value.trim();
+  if (make === 'Other' || !make) {
+    var custom = document.getElementById('customMake');
+    make = custom ? custom.value.trim() : '';
+  }
   if (!make) { showToast('Type a make name first'); return; }
   try {
     const snap = await get(ref(db, 'makes'));
@@ -1369,18 +1780,26 @@ window.saveCustomMake = async function() {
     await set(ref(db, 'makes'), makes);
     window.makesData[make] = [];
     populateMakes(window.makesData);
+    window.selectMake(make);
     showToast('\u2713 Saved make "' + make + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
 
 // ── Save custom model ──
 window.saveCustomModel = async function() {
-  var makeEl = document.getElementById('vMake');
-  var make = makeEl ? makeEl.value.trim() : '';
+  var make = document.getElementById('vMake').value.trim();
+  if (make === 'Other') {
+    var customMake = document.getElementById('customMake');
+    make = customMake ? customMake.value.trim() : '';
+  }
   if (!make) { showToast('Select a make first'); return; }
-  var model = isMobile ? prompt('Enter model name to save under ' + make + ':') : document.getElementById('vModel').value.trim();
-  if (!model || !model.trim()) { showToast('Enter a model name'); return; }
-  model = model.trim();
+
+  var model = document.getElementById('vModel').value.trim();
+  if (model === 'Other' || !model) {
+    var customModel = document.getElementById('customModel');
+    model = customModel ? customModel.value.trim() : '';
+  }
+  if (!model) { showToast('Enter a model name'); return; }
   try {
     const snap = await get(ref(db, 'makes/' + make));
     var models = snap.exists() ? snap.val() : [];
@@ -1392,8 +1811,8 @@ window.saveCustomModel = async function() {
     models.push(model); models.sort();
     await set(ref(db, 'makes/' + make), models);
     window.makesData[make] = models;
-    populateModels(models);
-    if (!isMobile) window.onMakeInput();
+    populateModelOptions(models);
+    window.selectModel(model);
     showToast('\u2713 Saved model "' + model + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -1407,7 +1826,7 @@ window.toggleOtherVehicle = function() {
   if (!window.isOtherVehicle) {
     window.clearMake();
     var colorEl = document.getElementById('vColor'); if (colorEl) colorEl.value = '';
-    var yearEl = document.getElementById('vYear'); if (yearEl) yearEl.value = '';
+    if (window.resetYearUI) window.resetYearUI();
   }
 };
 
@@ -1518,8 +1937,9 @@ window.selectChip = function(evt, group, id, label) {
     // Vehicle fields
     document.getElementById('vehicleFields').classList.toggle('on', isVehicle);
     if (!isVehicle) {
-      ['vColor','vYear','vMake','vModel'].forEach(function(fid){ document.getElementById(fid).value = ''; });
-      updateMakeLogo('');
+      var colorEl = document.getElementById('vColor'); if (colorEl) colorEl.value = '';
+      if (window.resetYearUI) window.resetYearUI();
+      window.clearMake();
     }
 
     // House interior/exterior chips
@@ -1571,6 +1991,7 @@ function buildNatureString() {
   }
   if (VEHICLE_NATURES.indexOf(val) !== -1 || (val === 'other' && window.isOtherVehicle)) {
     var yr   = document.getElementById('vYear') ? document.getElementById('vYear').value.trim() : '';
+    if (yr === 'Other') yr = (document.getElementById('customYear') ? document.getElementById('customYear').value.trim() : '') || 'Other';
     var colEl = document.getElementById('vColor');
     var col  = colEl ? colEl.value.trim() : '';
     if (col === 'Other') col = (document.getElementById('customColor') ? document.getElementById('customColor').value.trim() : '') || 'Other';
@@ -1609,15 +2030,44 @@ async function saveCallNumber(num) {
   } catch(e) { console.warn('Could not save call number:', e); }
 }
 
-function getMapsUrl(d) {
+// ── Detect a manually-typed intersection (e.g. "Main St & Broad St") ──
+// Only relevant when we don't have precise Places/pasted coordinates —
+// a single text search for an intersection is often unreliable, so we
+// offer a link for each cross street instead.
+function detectIntersection(loc) {
+  if (!loc) return null;
+  var m = loc.match(/^(.{2,60}?)\s*(?:&|\/|@|\bx\b|\band\b)\s*(.{2,60})$/i);
+  if (!m) return null;
+  var a = m[1].trim(), b = m[2].trim();
+  if (!a || !b) return null;
+  // Avoid false-positives on normal full addresses (they don't usually need this)
+  if (a.indexOf(',') !== -1 && b.indexOf(',') !== -1) return null;
+  return [a, b];
+}
+
+function getMapsLinks(d) {
   if (d.lat && d.lng) {
-    // Precise coords from Google Places — opens exact pin
-    return 'https://www.google.com/maps?q=' + d.lat + ',' + d.lng;
-  } else if (d.location) {
-    // Fallback to text search
-    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(d.location);
+    return [{ label: null, url: 'https://www.google.com/maps?q=' + d.lat + ',' + d.lng }];
   }
-  return null;
+  if (d.location) {
+    var cross = detectIntersection(d.location);
+    if (cross) {
+      return [
+        { label: cross[0], url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(cross[0] + ', Bergen County, NJ') },
+        { label: cross[1], url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(cross[1] + ', Bergen County, NJ') }
+      ];
+    }
+    return [{ label: null, url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(d.location) }];
+  }
+  return [];
+}
+
+function appendMapsLinks(lines, d) {
+  var links = getMapsLinks(d);
+  links.forEach(function(l) {
+    if (l.label) lines.push(l.label + ': ' + l.url);
+    else lines.push(l.url);
+  });
 }
 
 function buildWA(d) {
@@ -1628,8 +2078,7 @@ function buildWA(d) {
   lines.push('Call#:' + d.callNum);
   lines.push('');
   lines.push('Location:' + d.location);
-  var mapsUrl = getMapsUrl(d);
-  if (mapsUrl) lines.push(mapsUrl);
+  appendMapsLinks(lines, d);
   lines.push('');
   lines.push('Phone:' + d.phone);
   lines.push('');
@@ -1652,8 +2101,7 @@ function buildInt(d) {
   lines.push('New Call (BC)');
   lines.push('');
   lines.push('Location: ' + d.location);
-  var mapsUrl = getMapsUrl(d);
-  if (mapsUrl) lines.push(mapsUrl);
+  appendMapsLinks(lines, d);
   lines.push('');
   lines.push('Phone: ' + d.phone);
   lines.push('');
@@ -1687,6 +2135,17 @@ window.dispatchInterstate = async function() {
     if (!d.location) { alert('Please enter a Location.'); return; }
     if (!d.nature) { alert('Please select a Nature of Call.'); return; }
   }
+
+  // Interstate does not dispatch in Bergen's primary zone
+  var zone = window.getZone(d.lat, d.lng) || window.currentZone;
+  if (zone === 'primary') {
+    var ok = confirm('This location is in Bergen\u2019s PRIMARY coverage zone.\nInterstate does not dispatch calls here \u2014 Bergen County Chaverim handles these directly (201-800-4357).\n\nSend to Interstate anyway?');
+    if (!ok) return;
+  } else if (zone === 'secondary') {
+    var ok2 = confirm('This location is in Bergen\u2019s SECONDARY zone.\nInterstate only dispatches here if Bergen County Chaverim requests it.\n\nContinue?');
+    if (!ok2) return;
+  }
+
   var msg = buildInt(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
@@ -1699,11 +2158,16 @@ window.verifyLocation = function() {
 };
 
 window.clearForm = async function() {
-  ['phone','location','callerName','notes','vYear','vColor','acQuantity','floodEquipment','customNature'].forEach(function(id){
+  ['phone','location','callerName','notes','vColor','acQuantity','floodEquipment','customNature'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
   window.clearMake();
+  if (window.resetYearUI) window.resetYearUI();
   document.getElementById('natureType').value = '';
+
+  document.getElementById('location').dataset.lat = '';
+  document.getElementById('location').dataset.lng = '';
+  window.updateZoneBadge();
 
   window.lockedInsideNote = '';
   window.isUrgent = false;
@@ -1721,7 +2185,6 @@ window.clearForm = async function() {
   document.getElementById('customNatureWrap').classList.remove('on');
   document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
   document.getElementById('preview').classList.remove('on');
-  document.getElementById('mapsLinkWrap').style.display = 'none';
 
   // Load next call number fresh
   try {
