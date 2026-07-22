@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Chaverim Bergen County — Emergency Dispatch</title>
 <link rel="icon" type="image/png" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
 <link rel="apple-touch-icon" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0F0E06" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BC Dispatch" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
 <script>
 // Must be global for Google Maps callback — defined before the API script loads
@@ -361,6 +367,9 @@ window.initAutocomplete = function() {
     <div class="brand-sub">Bergen County</div>
     <div class="brand-tag">Dispatch Center</div>
   </div>
+  <button id="installAppBtn" onclick="window.installApp()" style="display:none;margin-left:auto;align-items:center;gap:6px;background:#C8A532;color:#0F0E06;border:none;border-radius:9px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">
+    <i class="ti ti-download" style="font-size:15px;"></i> Install App
+  </button>
 </div>
 
 <div class="page">
@@ -471,11 +480,26 @@ window.initAutocomplete = function() {
             <option value="vehicle_pullout">Vehicle Pullout</option>
             <option value="plastic_hanging">Plastic Hanging</option>
             <option value="bumper_hanging">Bumper Hanging</option>
+            <option value="stuck_snow">Stuck in Snow</option>
+            <option value="stuck_rock">Stuck on a Rock</option>
+            <option value="stuck_mud">Stuck in Mud</option>
+            <option value="party_trapped_vehicle">Party Trapped in Vehicle</option>
+            <option value="garage_pickup">Garage Pickup</option>
+            <option value="garage_dropoff">Garage Dropoff</option>
           </optgroup>
           <optgroup label="Community / Home">
             <option value="flood">Flood</option>
             <option value="heater">Heater Request</option>
             <option value="ac">AC Request</option>
+            <option value="cut_lock">Cut a Lock</option>
+            <option value="cut_tree">Cut a Tree</option>
+            <option value="smell_gas">Smell of Gas</option>
+          </optgroup>
+          <optgroup label="Safety / Emergency">
+            <option value="traffic_control">Traffic Control</option>
+            <option value="missing_person">Missing Person</option>
+            <option value="edp_situation">EDP Situation</option>
+            <option value="party_trapped">Party Trapped</option>
           </optgroup>
           <optgroup label="Other">
             <option value="other">Other</option>
@@ -2113,7 +2137,7 @@ window.toggleUrgent = function() {
 };
 
 // ── Nature change ──
-var VEHICLE_NATURES = ['flat_tire','boost','out_of_gas','lockout','vehicle_stalled','vehicle_pullout','plastic_hanging','bumper_hanging'];
+var VEHICLE_NATURES = ['flat_tire','boost','out_of_gas','lockout','vehicle_stalled','vehicle_pullout','plastic_hanging','bumper_hanging','stuck_snow','stuck_rock','stuck_mud','party_trapped_vehicle','garage_pickup','garage_dropoff'];
 var QTY_NATURES = { heater: 'Heater units', ac: 'AC units' };
 
 window.onNatureChange = function() {
@@ -2136,8 +2160,8 @@ window.onNatureChange = function() {
   document.getElementById('houseLockSide').style.display = '';
   document.getElementById('houseLockSide').classList.remove('on');
 
-  // Show trapped modal when lockout selected
-  if (val === 'lockout') {
+  // Show trapped modal when lockout or a "party trapped" nature is selected
+  if (val === 'lockout' || val === 'party_trapped' || val === 'party_trapped_vehicle') {
     document.getElementById('trappedModal').classList.add('on');
   }
 
@@ -2734,6 +2758,47 @@ window.clearForm = async function() {
 
 // ── Init ──
 loadAll();
+</script>
+<script>
+// ── PWA: installability (Android/Chrome "Add to Home Screen") ──
+var deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  var btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'inline-flex';
+});
+
+window.installApp = async function() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  var btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'none';
+};
+
+window.addEventListener('appinstalled', function() {
+  var btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'none';
+  deferredInstallPrompt = null;
+});
+
+// Already running as an installed app (standalone) — no need to offer install
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+  var installBtnEl = document.getElementById('installAppBtn');
+  if (installBtnEl) installBtnEl.style.display = 'none';
+}
+
+// ── PWA: service worker (static-shell caching, required by Chrome for installability) ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(e) {
+      console.warn('Service worker registration failed:', e);
+    });
+  });
+}
 </script>
 </body>
 </html>
