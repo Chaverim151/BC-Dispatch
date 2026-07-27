@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="BC Dispatch" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 // Must be global for Google Maps callback — defined before the API script loads
 window.initAutocomplete = function() {
@@ -33,11 +34,25 @@ window.initAutocomplete = function() {
     input.dataset.lat = place.geometry.location.lat();
     input.dataset.lng = place.geometry.location.lng();
     // Keep the POI/establishment name (e.g. "Costco", "ShopRite") so it can be
-    // shown above the address in the dispatch message — only when it's distinct
-    // from the address itself (a plain street geocode has no separate name).
-    input.dataset.name = (place.name && place.name !== address) ? place.name : '';
+    // shown above the address in the dispatch message — only when it's a truly
+    // distinct place name, not a plain street geocode where Google sets
+    // place.name to something that's effectively already part of the address.
+    input.dataset.name = window.isMeaningfullyDifferentPoiName(place.name, address) ? place.name : '';
     if (window.updateZoneBadge) window.updateZoneBadge();
   });
+};
+
+// True only when `name` adds real information beyond the address itself —
+// not an exact match, and not just a substring/prefix of the address (which
+// happens for plain street geocodes where Google sets place.name to the
+// street address rather than an actual business/POI name).
+window.isMeaningfullyDifferentPoiName = function(name, address) {
+  if (!name || !address) return false;
+  var n = name.trim().toLowerCase();
+  var a = address.trim().toLowerCase();
+  if (!n || n === a) return false;
+  if (a.indexOf(n) !== -1) return false;
+  return true;
 };
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFAsM0xqmKrnirTKIH9If2s4GuDpmO6BQ&libraries=places&loading=async&callback=initAutocomplete" async defer></script>
@@ -272,6 +287,8 @@ window.initAutocomplete = function() {
   .btn-wa:hover { background: #D8B540; }
   .btn-int { background: #0F0E06; color: #C8A532; border: 1.5px solid #2E2A10; }
   .btn-int:hover { background: #1C1A08; }
+  .btn-copy { background: transparent; color: #8B6E1A; border: 1.5px dashed #C8A532; }
+  .btn-copy:hover { background: #F5ECC0; color: #6B5515; }
 
   /* ── Preview ── */
   .preview { background: #0F0E06; border-radius: 14px; padding: 1.1rem 1.25rem; margin-top: 1.1rem; display: none; border: 1px solid #2A2810; }
@@ -451,7 +468,7 @@ window.initAutocomplete = function() {
           <button class="paste-maps-btn" onclick="window.pasteMapsUrl()" style="margin-top:0;">
             <i class="ti ti-clipboard"></i> Paste Maps link
           </button>
-          <button class="paste-maps-btn" onclick="window.open('https://i911.com','_blank')" style="margin-top:0;border-color:#4a7fa5;color:#4a7fa5;">
+          <button class="paste-maps-btn" id="i911RequestBtn" onclick="window.requestI911Location()" style="margin-top:0;border-color:#4a7fa5;color:#4a7fa5;">
             <i class="ti ti-location"></i> Request via i911
           </button>
         </div>
@@ -656,6 +673,7 @@ window.initAutocomplete = function() {
       <div class="actions">
         <button class="btn btn-wa" onclick="window.dispatchWhatsApp()"><i class="ti ti-message-circle"></i> Dispatch via WhatsApp</button>
         <button class="btn btn-int" id="dispatchIntBtn" onclick="window.dispatchInterstate()"><i class="ti ti-car"></i> Dispatch to Interstate</button>
+        <button class="btn btn-copy" onclick="window.copyMessage()"><i class="ti ti-copy"></i> Copy Message</button>
       </div>
     </div>
   </div>
@@ -719,6 +737,28 @@ window.initAutocomplete = function() {
       <div class="modal-sub" id="dispatchCheckSub" style="display:none;"></div>
       <div id="dispatchCheckList" style="text-align:left;margin-top:0.9rem;display:none;"></div>
       <div class="modal-btns" id="dispatchCheckBtns" style="grid-template-columns:1fr;margin-top:1.25rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- i911 caller-location result -->
+<div class="modal-overlay" id="i911ResultModal">
+  <div class="modal" id="i911ResultModalBox">
+    <div class="modal-hdr">
+      <i class="ti ti-map-pin-check"></i>
+      <div class="modal-hdr-txt">i911 Location Received</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-question">Caller's estimated location</div>
+      <div style="text-align:left;background:#0F0E06;border:1px solid #2A2810;border-radius:12px;padding:1rem;margin:0.9rem 0 1.25rem;color:#E8D98A;font-size:14px;line-height:1.9;">
+        <div><strong style="color:#C8A532;">Coordinates:</strong> <span id="i911Coords"></span></div>
+        <div><strong style="color:#C8A532;">Accuracy:</strong> <span id="i911Accuracy"></span></div>
+        <div><strong style="color:#C8A532;">Closest address:</strong> <span id="i911Address"></span></div>
+      </div>
+      <div class="modal-btns" style="grid-template-columns:1fr;">
+        <button class="modal-btn modal-btn-ignore" onclick="window.useI911Location()">Use This Location</button>
+        <button class="modal-btn modal-btn-no" onclick="window.dismissI911Modal()" style="margin-top:8px;">Dismiss</button>
+      </div>
     </div>
   </div>
 </div>
@@ -890,13 +930,193 @@ window.updateZoneBadge = function() {
       badge.classList.add('zone-outside', 'on');
       text.textContent = 'Outside Bergen coverage area';
       // Auto-pop the shared dispatch-check modal the moment a location resolves
-      // to genuinely uncovered — only once per address (not on every re-check).
+      // to genuinely uncovered — only once per address (not on every re-check),
+      // and never on top of a modal the dispatcher is already mid-interaction with.
       if (!window._outsideZoneNotified) {
-        window._outsideZoneNotified = true;
-        if (window.showOutsideZoneModal) window.showOutsideZoneModal();
+        var dispatchModalEl = document.getElementById('dispatchCheckModal');
+        var trappedModalEl = document.getElementById('trappedModal');
+        var somethingElseOpen = (dispatchModalEl && dispatchModalEl.classList.contains('on'))
+          || (trappedModalEl && trappedModalEl.classList.contains('on'));
+        if (!somethingElseOpen) {
+          window._outsideZoneNotified = true;
+          if (window.showOutsideZoneModal) window.showOutsideZoneModal();
+        }
       }
     }
   }
+};
+
+// ── i911 caller-location request ──
+// Contract (see i911-worker.js): POST {phonenumber:"+1XXXXXXXXXX"} to
+// <I911_PROXY_BASE>/i911 → { webSocketURL } → connect via socket.io and
+// listen for a "location-update" event carrying { latitude, longitude }.
+const I911_PROXY_BASE = 'https://i911.shmueleidelman-work.workers.dev';
+window._i911Socket = null;
+window._i911TimeoutId = null;
+window._i911PendingLatLng = null;
+window._i911PendingAddress = null;
+
+function toE164(phoneStr) {
+  var raw = (phoneStr || '').trim();
+  if (!raw) return null;
+  if (raw.charAt(0) === '+') {
+    var plusDigits = raw.replace(/[^\d+]/g, '');
+    return plusDigits.length > 1 ? plusDigits : null;
+  }
+  var digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return '+1' + digits;
+  if (digits.length === 11 && digits.charAt(0) === '1') return '+' + digits;
+  return null;
+}
+
+window.requestI911Location = async function() {
+  var phoneInput = document.getElementById('phone');
+  var e164 = toE164(phoneInput ? phoneInput.value : '');
+  if (!e164) {
+    showToast('Enter a valid 10-digit phone number first');
+    if (phoneInput) phoneInput.focus();
+    return;
+  }
+
+  window.closeI911Socket();
+
+  var btn = document.getElementById('i911RequestBtn');
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
+  showToast('Requesting location via i911...');
+
+  var resp, data;
+  try {
+    resp = await fetch(I911_PROXY_BASE + '/i911', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phonenumber: e164 })
+    });
+    data = await resp.json().catch(function() { return null; });
+  } catch (e) {
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+    showToast('Could not reach i911 relay — check connection');
+    console.warn('i911 request error:', e);
+    return;
+  }
+
+  if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+
+  if (!resp.ok || !data || !data.webSocketURL) {
+    var errMsg = (data && data.error) ? data.error : ('HTTP ' + resp.status);
+    showToast('i911 request failed: ' + errMsg);
+    console.warn('i911 request failed:', errMsg);
+    return;
+  }
+
+  showToast('Location request sent \u2014 waiting for caller to respond...');
+  window.connectI911Socket(data.webSocketURL);
+};
+
+window.connectI911Socket = function(webSocketURL) {
+  if (typeof io !== 'function') {
+    showToast('Location service unavailable (socket.io failed to load)');
+    return;
+  }
+
+  var socket = io(webSocketURL, { transports: ['websocket'] });
+  window._i911Socket = socket;
+
+  socket.on('connect_error', function(err) {
+    console.warn('i911 socket connect_error:', err && err.message ? err.message : err);
+    showToast('Could not connect to i911 location service');
+    window.closeI911Socket();
+  });
+
+  socket.on('location-update', function(payload) {
+    window.handleI911Location(payload);
+  });
+
+  // Give up if the caller never responds to the location-request text
+  window._i911TimeoutId = setTimeout(function() {
+    showToast('No location received from caller (timed out)');
+    window.closeI911Socket();
+  }, 5 * 60 * 1000);
+};
+
+window.closeI911Socket = function() {
+  if (window._i911TimeoutId) { clearTimeout(window._i911TimeoutId); window._i911TimeoutId = null; }
+  if (window._i911Socket) {
+    try { window._i911Socket.disconnect(); } catch (e) { /* ignore */ }
+    window._i911Socket = null;
+  }
+};
+
+window.handleI911Location = function(payload) {
+  window.closeI911Socket();
+
+  var lat = payload && (payload.latitude != null ? payload.latitude : payload.lat);
+  var lng = payload && (payload.longitude != null ? payload.longitude : payload.lng);
+  var accuracy = payload && (
+    payload.accuracy != null ? payload.accuracy :
+    (payload.acc != null ? payload.acc : null)
+  );
+
+  lat = parseFloat(lat); lng = parseFloat(lng);
+  if (isNaN(lat) || isNaN(lng)) {
+    showToast('i911 sent a location update with no usable coordinates');
+    console.warn('i911 location-update payload:', payload);
+    return;
+  }
+
+  window.showI911ResultModal(lat, lng, accuracy);
+};
+
+// Shows the received coordinates + accuracy, and reverse-geocodes the
+// closest street address via the Google Maps Geocoder (already loaded for
+// Places Autocomplete — no extra script needed).
+window.showI911ResultModal = function(lat, lng, accuracy) {
+  window._i911PendingLatLng = { lat: lat, lng: lng };
+  window._i911PendingAddress = null;
+
+  document.getElementById('i911Coords').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  document.getElementById('i911Accuracy').textContent = (accuracy != null && !isNaN(accuracy))
+    ? ('\u00B1' + Math.round(accuracy) + 'm estimated')
+    : 'Not provided by i911';
+
+  var addrEl = document.getElementById('i911Address');
+  addrEl.textContent = 'Looking up nearest address...';
+
+  document.getElementById('i911ResultModal').classList.add('on');
+
+  if (window.google && google.maps && google.maps.Geocoder) {
+    var geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
+      if (status === 'OK' && results && results[0]) {
+        addrEl.textContent = results[0].formatted_address;
+        window._i911PendingAddress = results[0].formatted_address;
+      } else {
+        addrEl.textContent = 'Could not resolve a street address for this location';
+      }
+    });
+  } else {
+    addrEl.textContent = 'Address lookup unavailable';
+  }
+};
+
+window.dismissI911Modal = function() {
+  document.getElementById('i911ResultModal').classList.remove('on');
+  window._i911PendingLatLng = null;
+  window._i911PendingAddress = null;
+};
+
+window.useI911Location = function() {
+  var pending = window._i911PendingLatLng;
+  if (!pending) return;
+
+  var locEl = document.getElementById('location');
+  var display = window._i911PendingAddress || (pending.lat.toFixed(6) + ', ' + pending.lng.toFixed(6));
+  locEl.value = display;
+  locEl.dataset.lat = pending.lat;
+  locEl.dataset.lng = pending.lng;
+  locEl.dataset.name = '';
+  window.updateZoneBadge();
+  window.dismissI911Modal();
+  showToast('\u2713 Location filled from i911');
 };
 
 // ── EZ Spare fitment lookup (Flat Tire → "No spare, needs EZ spare") ──
@@ -955,6 +1175,7 @@ function ezSparePopulateSelect(el, rawData, placeholder) {
 
 // Re-fetches the Trim/Option list for the Vehicle info "Trim / Option" field
 // from the current Year/Make/Model — called whenever any of those change.
+window._vTrimRequestId = 0;
 window.refreshVehicleTrim = async function() {
   var trimSel = document.getElementById('vTrim');
   if (!trimSel) return;
@@ -969,6 +1190,10 @@ window.refreshVehicleTrim = async function() {
   var make  = document.getElementById('vMake')  ? document.getElementById('vMake').value  : '';
   var model = document.getElementById('vModel') ? document.getElementById('vModel').value : '';
 
+  // Every call gets its own id; if a newer call starts before this one's
+  // fetch resolves, this one's (now-stale) result is discarded below.
+  var requestId = ++window._vTrimRequestId;
+
   if (!year || !make || !model || make === 'Other' || model === 'Other') {
     trimSel.innerHTML = '<option value="">— Select year, make &amp; model first —</option>';
     trimSel.disabled = true;
@@ -979,12 +1204,14 @@ window.refreshVehicleTrim = async function() {
   trimSel.innerHTML = '<option value="">Loading options...</option>';
   trimSel.disabled = false;
   var data = await ezSpareFetch('/api/get-options', year, make, model);
+  if (requestId !== window._vTrimRequestId) return; // superseded by a newer Year/Make/Model change
   ezSparePopulateSelect(trimSel, data, 'Select Trim / Option');
 };
 
 // Fired when the shared Vehicle info Trim/Option changes. Always keeps the
 // vehicle description in sync; only fetches EZ Spare hardware specs when the
 // "No spare — needs EZ spare" chip is the active one.
+window._ezInfoRequestId = 0;
 window.onVehicleTrimChange = async function() {
   var trimSel = document.getElementById('vTrim');
   var resultEl = document.getElementById('ezSpareResult');
@@ -1010,7 +1237,9 @@ window.onVehicleTrimChange = async function() {
   var make  = document.getElementById('vMake').value;
   var model = document.getElementById('vModel').value;
 
+  var requestId = ++window._ezInfoRequestId;
   var data = await ezSpareFetch('/api/get-info', year, make, model, trimSel.value);
+  if (requestId !== window._ezInfoRequestId) return; // superseded by a newer Trim change
   var spec = data ? (Array.isArray(data) ? data[0] : data) : null;
 
   if (!spec) {
@@ -1053,7 +1282,10 @@ const TELZIO_PROXY_URL = 'https://cobc.shmueleidelman-work.workers.dev/proxy';
 var telzioInterval = null;
 var lastLiveCallFrom = null;
 
+var telzioPollInFlight = false;
 async function pollTelzioLiveCalls() {
+  if (telzioPollInFlight) return; // previous poll hasn't finished — skip this tick
+  telzioPollInFlight = true;
   try {
     var resp = await fetch(TELZIO_PROXY_URL + '/calls/live');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1095,6 +1327,8 @@ async function pollTelzioLiveCalls() {
     var statusEl = document.getElementById('telzioStatus');
     statusEl.textContent = '';
     statusEl.className = 'telzio-status offline';
+  } finally {
+    telzioPollInFlight = false;
   }
 }
 
@@ -1293,6 +1527,7 @@ function showToast(msg) {
 }
 
 // ── Populate color datalist ──
+var colorDropdownOutsideHandler = null;
 window.toggleColorDropdown = function() {
   var btn = document.getElementById('colorDropdownBtn');
   var menu = document.getElementById('colorDropdownMenu');
@@ -1301,18 +1536,24 @@ window.toggleColorDropdown = function() {
   if (isOpen) {
     menu.classList.remove('open');
     btn.classList.remove('open');
+    if (colorDropdownOutsideHandler) {
+      document.removeEventListener('click', colorDropdownOutsideHandler);
+      colorDropdownOutsideHandler = null;
+    }
   } else {
     menu.classList.add('open');
     btn.classList.add('open');
     // Close on outside click
     setTimeout(function() {
-      document.addEventListener('click', function handler(e) {
+      colorDropdownOutsideHandler = function(e) {
         if (!document.getElementById('colorDropdown').contains(e.target)) {
           menu.classList.remove('open');
           btn.classList.remove('open');
-          document.removeEventListener('click', handler);
+          document.removeEventListener('click', colorDropdownOutsideHandler);
+          colorDropdownOutsideHandler = null;
         }
-      });
+      };
+      document.addEventListener('click', colorDropdownOutsideHandler);
     }, 0);
   }
 };
@@ -1505,6 +1746,7 @@ function buildYearDropdownMenu(years) {
   });
 }
 
+var yearDropdownOutsideHandler = null;
 window.toggleYearDropdown = function() {
   var btn = document.getElementById('yearDropdownBtn');
   var menu = document.getElementById('yearDropdownMenu');
@@ -1513,17 +1755,23 @@ window.toggleYearDropdown = function() {
   if (isOpen) {
     menu.classList.remove('open');
     btn.classList.remove('open');
+    if (yearDropdownOutsideHandler) {
+      document.removeEventListener('click', yearDropdownOutsideHandler);
+      yearDropdownOutsideHandler = null;
+    }
   } else {
     menu.classList.add('open');
     btn.classList.add('open');
     setTimeout(function() {
-      document.addEventListener('click', function handler(e) {
+      yearDropdownOutsideHandler = function(e) {
         if (!document.getElementById('yearDropdown').contains(e.target)) {
           menu.classList.remove('open');
           btn.classList.remove('open');
-          document.removeEventListener('click', handler);
+          document.removeEventListener('click', yearDropdownOutsideHandler);
+          yearDropdownOutsideHandler = null;
         }
-      });
+      };
+      document.addEventListener('click', yearDropdownOutsideHandler);
     }, 0);
   }
 };
@@ -1787,6 +2035,7 @@ function buildMakeDropdownMenu(makes) {
   });
 }
 
+var makeDropdownOutsideHandler = null;
 window.toggleMakeDropdown = function() {
   var btn = document.getElementById('makeDropdownBtn');
   var menu = document.getElementById('makeDropdownMenu');
@@ -1795,17 +2044,23 @@ window.toggleMakeDropdown = function() {
   if (isOpen) {
     menu.classList.remove('open');
     btn.classList.remove('open');
+    if (makeDropdownOutsideHandler) {
+      document.removeEventListener('click', makeDropdownOutsideHandler);
+      makeDropdownOutsideHandler = null;
+    }
   } else {
     menu.classList.add('open');
     btn.classList.add('open');
     setTimeout(function() {
-      document.addEventListener('click', function handler(e) {
+      makeDropdownOutsideHandler = function(e) {
         if (!document.getElementById('makeDropdown').contains(e.target)) {
           menu.classList.remove('open');
           btn.classList.remove('open');
-          document.removeEventListener('click', handler);
+          document.removeEventListener('click', makeDropdownOutsideHandler);
+          makeDropdownOutsideHandler = null;
         }
-      });
+      };
+      document.addEventListener('click', makeDropdownOutsideHandler);
     }, 0);
   }
 };
@@ -1874,6 +2129,7 @@ function populateModelOptions(models) {
   if (!isMobile) buildModelDropdownMenu(withOther);
 }
 
+var modelDropdownOutsideHandler = null;
 window.toggleModelDropdown = function() {
   if (!window._modelEnabled) { showToast('Select a make first'); return; }
   var btn = document.getElementById('modelDropdownBtn');
@@ -1883,17 +2139,23 @@ window.toggleModelDropdown = function() {
   if (isOpen) {
     menu.classList.remove('open');
     btn.classList.remove('open');
+    if (modelDropdownOutsideHandler) {
+      document.removeEventListener('click', modelDropdownOutsideHandler);
+      modelDropdownOutsideHandler = null;
+    }
   } else {
     menu.classList.add('open');
     btn.classList.add('open');
     setTimeout(function() {
-      document.addEventListener('click', function handler(e) {
+      modelDropdownOutsideHandler = function(e) {
         if (!document.getElementById('modelDropdown').contains(e.target)) {
           menu.classList.remove('open');
           btn.classList.remove('open');
-          document.removeEventListener('click', handler);
+          document.removeEventListener('click', modelDropdownOutsideHandler);
+          modelDropdownOutsideHandler = null;
         }
-      });
+      };
+      document.addEventListener('click', modelDropdownOutsideHandler);
     }, 0);
   }
 };
@@ -2383,8 +2645,10 @@ function getFormData() {
 
 // ── Save call number to Firebase after dispatch ──
 async function saveCallNumber(num) {
+  var parsed = parseInt(num, 10);
+  if (isNaN(parsed)) return; // nothing valid to save (e.g. Interstate dispatch with no Call #)
   try {
-    await set(ref(db, 'meta/lastCallNumber'), parseInt(num));
+    await set(ref(db, 'meta/lastCallNumber'), parsed);
   } catch(e) { console.warn('Could not save call number:', e); }
 }
 
@@ -2479,6 +2743,39 @@ function showPreview(txt) {
   document.getElementById('previewText').textContent = txt;
   document.getElementById('preview').classList.add('on');
 }
+
+// Copies the dispatch message to the clipboard without actually sending it —
+// doesn't enforce required fields since this is just a utility, not a dispatch.
+window.copyMessage = async function() {
+  var d = getFormData();
+  var msg = buildWA(d);
+  showPreview(msg);
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(msg);
+      showToast('\u2713 Message copied to clipboard');
+      return;
+    }
+    throw new Error('Clipboard API unavailable');
+  } catch (e) {
+    // Fallback for contexts where the async Clipboard API is blocked/missing
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = msg;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('\u2713 Message copied to clipboard');
+    } catch (e2) {
+      showToast('Could not copy \u2014 message shown in preview below');
+    }
+  }
+};
 
 // ── Shared dispatch-check modal (outside coverage area / missing info / etc.) ──
 window.showDispatchModal = function(opts) {
@@ -2666,6 +2963,18 @@ window.showOutsideZoneModal = function() {
   });
 };
 
+// window.open(url, '_blank') is frequently silently blocked when running as
+// an installed/standalone PWA (no window chrome for a new tab to open into),
+// returning null instead of actually launching anything — which is why
+// WhatsApp dispatch could appear to do nothing once installed. Falls back to
+// direct navigation, which reliably triggers wa.me's app-switch behavior.
+function openExternalLink(url) {
+  var win = window.open(url, '_blank');
+  if (!win) {
+    window.location.href = url;
+  }
+}
+
 window.dispatchWhatsApp = async function() {
   var d = getFormData();
   if (!d.urgent) {
@@ -2675,7 +2984,7 @@ window.dispatchWhatsApp = async function() {
   var msg = buildWA(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  openExternalLink('https://wa.me/?text=' + encodeURIComponent(msg));
 };
 
 window.dispatchInterstate = async function() {
@@ -2700,12 +3009,12 @@ window.dispatchInterstate = async function() {
   var msg = buildInt(d);
   showPreview(msg);
   await saveCallNumber(d.callNum);
-  window.open('https://wa.me/18458524357?text=' + encodeURIComponent(msg), '_blank');
+  openExternalLink('https://wa.me/18458524357?text=' + encodeURIComponent(msg));
 };
 
 window.verifyLocation = function() {
   var loc = document.getElementById('location').value;
-  if (loc) window.open('https://maps.google.com/?q=' + encodeURIComponent(loc), '_blank');
+  if (loc) openExternalLink('https://maps.google.com/?q=' + encodeURIComponent(loc));
 };
 
 window.clearForm = async function() {
