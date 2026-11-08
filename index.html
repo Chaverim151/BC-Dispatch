@@ -13,7 +13,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="BC Dispatch" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<!-- i911's server runs Socket.IO v2, so the client must be v2 (a v4 client can't connect) -->
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.5.0/dist/socket.io.js"></script>
 <script>
 // Must be global for Google Maps callback — defined before the API script loads
 window.initAutocomplete = function() {
@@ -1039,7 +1040,11 @@ window.connectI911Socket = function(webSocketURL) {
     return;
   }
 
-  var socket = io(webSocketURL, { transports: ['websocket'] });
+  // Split "wss://www.i911.com?token=XYZ" into the server address + token,
+  // matching i911's sample code: io('wss://www.i911.com', { query: { token } })
+  var parsed = new URL(webSocketURL);
+  var token = parsed.searchParams.get('token');
+  var socket = io(parsed.origin, { query: { token: token }, transports: ['websocket'], forceNew: true });
   window._i911Socket = socket;
 
   socket.on('connect_error', function(err) {
