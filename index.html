@@ -445,9 +445,8 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
         <div>
           <div class="lbl"><i class="ti ti-hash"></i> Call # <span class="req">*</span></div>
           <div class="inp-wrap callnum-wrap">
-            <input type="text" id="callNum" placeholder="Loading..." />
+            <input type="text" id="callNum" placeholder="Enter call #" inputmode="numeric" />
             <button class="field-clear" onclick="window.clearField('callNum')" tabindex="-1">&times;</button>
-            <span class="callnum-badge" id="callNumBadge">AUTO</span>
           </div>
         </div>
         <div>
@@ -1525,12 +1524,6 @@ if (TELZIO_PROXY_URL.indexOf('YOUR-WORKER') === -1) {
 // ── Load all data on startup ──
 async function loadAll() {
   try {
-    // 1. Last call number from Firebase
-    const callSnap = await get(ref(db, 'meta/lastCallNumber'));
-    const lastNum = callSnap.exists() ? callSnap.val() : 1000;
-    document.getElementById('callNum').value = lastNum + 1;
-    document.getElementById('callNum').dataset.auto = lastNum + 1;
-
     // 2. Colors from Firebase (with defaults)
     const colorsSnap = await get(ref(db, 'colors'));
     var colorList = [];
@@ -1589,8 +1582,6 @@ async function loadAll() {
     populateMakes(window.makesData);
     populateColors(['Beige','Black','Blue','Brown','Gold','Gray','Green','Maroon','Navy','Orange','Pink','Purple','Red','Silver','Tan','White','Yellow']);
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
-    document.getElementById('callNum').value = '';
-    document.getElementById('callNum').placeholder = 'Enter manually';
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
   }
 }
@@ -3117,7 +3108,6 @@ window.dispatchWhatsApp = async function() {
   }
   var msg = buildWA(d);
   showPreview(msg);
-  await saveCallNumber(d.callNum);
   openExternalLink('https://wa.me/?text=' + encodeURIComponent(msg));
 };
 
@@ -3142,7 +3132,6 @@ window.dispatchInterstate = async function() {
 
   var msg = buildInt(d);
   showPreview(msg);
-  await saveCallNumber(d.callNum);
   openExternalLink('https://wa.me/18458524357?text=' + encodeURIComponent(msg));
 };
 
@@ -3191,12 +3180,7 @@ window.clearForm = async function() {
   var vTrim = document.getElementById('vTrim');
   if (vTrim) { vTrim.innerHTML = '<option value="">— Select year, make &amp; model first —</option>'; vTrim.disabled = true; }
 
-  // Load next call number fresh
-  try {
-    const snap = await get(ref(db, 'meta/lastCallNumber'));
-    const last = snap.exists() ? snap.val() : 1000;
-    document.getElementById('callNum').value = last + 1;
-  } catch(e) { document.getElementById('callNum').value = ''; }
+  document.getElementById('callNum').value = '';
 };
 
 // ── Init ──
