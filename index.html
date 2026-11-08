@@ -773,10 +773,13 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
         <div><strong style="color:#C8A532;">Coordinates:</strong> <span id="i911Coords"></span></div>
         <div><strong style="color:#C8A532;">Accuracy:</strong> <span id="i911Accuracy"></span></div>
         <div><strong style="color:#C8A532;">Closest address:</strong> <span id="i911Address"></span></div>
+        <div id="i911PoiRow" style="display:none;"><strong style="color:#C8A532;">Nearby place:</strong> <span id="i911Poi"></span></div>
       </div>
-      <div class="modal-btns" style="grid-template-columns:1fr;">
-        <button class="modal-btn modal-btn-ignore" onclick="window.useI911Location()">Use This Location</button>
-        <button class="modal-btn modal-btn-no" onclick="window.dismissI911Modal()" style="margin-top:8px;">Dismiss</button>
+      <div class="modal-btns" style="grid-template-columns:1fr;gap:8px;">
+        <button class="modal-btn modal-btn-ignore" id="i911UsePoiBtn" style="display:none;" onclick="window.useI911Location('poi')"></button>
+        <button class="modal-btn modal-btn-ignore" id="i911UseAddrBtn" style="display:none;" onclick="window.useI911Location('address')"><i class="ti ti-home"></i> Use Address</button>
+        <button class="modal-btn modal-btn-ignore" onclick="window.useI911Location('coords')"><i class="ti ti-map-pin"></i> Use Coordinates</button>
+        <button class="modal-btn modal-btn-no" onclick="window.dismissI911Modal()">Dismiss</button>
       </div>
     </div>
   </div>
@@ -1109,43 +1112,145 @@ window.showI911ResultModal = function(lat, lng, accuracy) {
 
   var addrEl = document.getElementById('i911Address');
   addrEl.textContent = 'Looking up nearest address...';
+  window._i911PendingPoi = null;
+  document.getElementById('i911PoiRow').style.display = 'none';
+  document.getElementById('i911UsePoiBtn').style.display = 'none';
+  document.getElementById('i911UseAddrBtn').style.display = 'none';
 
   document.getElementById('i911ResultModal').classList.add('on');
 
-  if (window.google && google.maps && google.maps.Geocoder) {
-    var geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
-      if (status === 'OK' && results && results[0]) {
-        addrEl.textContent = results[0].formatted_address;
-        window._i911PendingAddress = results[0].formatted_address;
-      } else {
-        addrEl.textContent = 'Could not resolve a street address for this location';
-      }
-    });
-  } else {
+  if (!(window.google && google.maps)) {
     addrEl.textContent = 'Address lookup unavailable';
+    return;
   }
+
+  // 1) Street address (Geocoding API)
+  var geocoder = new google.maps.Geocoder();
+  geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
+    if (status === 'OK' && results && results[0]) {
+      window._i911PendingAddress = results[0].formatted_address;
+      addrEl.textContent = results[0].formatted_address;
+      document.getElementById('i911UseAddrBtn').style.display = '';
+    } else {
+      console.warn('i911 reverse geocode status:', status);
+      // Only fill from the nearby-place search below if it hasn't already
+      if (!window._i911PendingAddress) {
+        addrEl.textContent = status === 'REQUEST_DENIED'
+          ? 'Not available (Geocoding API not enabled on Google key)'
+          : 'Could not resolve a street address for this location';
+      }
+    }
+  });
+
+  // 2) Nearby place / POI (Places API \u2014 same library as the autocomplete)
+  window.findI911NearbyPoi(lat, lng, accuracy);
+};
+
+// Straight-line distance in meters between two lat/lng points
+function i911DistanceM(lat1, lng1, lat2, lng2) {
+  var R = 6371000, toRad = Math.PI / 180;
+  var dLat = (lat2 - lat1) * toRad, dLng = (lng2 - lng1) * toRad;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Looks for a real business/landmark close to the caller. Only offered when
+// it's within the GPS accuracy circle (+ a small buffer), so we never suggest
+// a store down the block when the caller is really at a house.
+var I911_NON_POI_TYPES = ['locality', 'political', 'route', 'neighborhood', 'sublocality',
+  'administrative_area_level_1', 'administrative_area_level_2', 'postal_code', 'street_address', 'premise'];
+
+window.findI911NearbyPoi = function(lat, lng, accuracy) {
+  if (!(google.maps.places && google.maps.places.PlacesService)) return;
+  var acc = (accuracy != null && !isNaN(accuracy)) ? accuracy : 30;
+  var maxDist = Math.min(Math.max(acc, 20) + 30, 150);
+
+  var svc = new google.maps.places.PlacesService(document.createElement('div'));
+  svc.nearbySearch({ location: { lat: lat, lng: lng }, radius: Math.ceil(maxDist) }, function(results, status) {
+    if (status !== google.maps.places.PlacesServiceStatus.OK || !results) {
+      if (status !== 'ZERO_RESULTS') console.warn('i911 nearby place status:', status);
+      return;
+    }
+    var best = null, bestDist = Infinity;
+    results.forEach(function(r) {
+      if (!r.geometry || !r.geometry.location || !r.name) return;
+      var types = r.types || [];
+      var isPoi = types.some(function(t) { return I911_NON_POI_TYPES.indexOf(t) === -1; });
+      if (!isPoi) return;
+      var d = i911DistanceM(lat, lng, r.geometry.location.lat(), r.geometry.location.lng());
+      if (d <= maxDist && d < bestDist) { best = r; bestDist = d; }
+    });
+    if (!best) return;
+
+    window._i911PendingPoi = {
+      name: best.name,
+      placeId: best.place_id,
+      address: best.vicinity || '',
+      lat: best.geometry.location.lat(),
+      lng: best.geometry.location.lng()
+    };
+    document.getElementById('i911Poi').textContent =
+      best.name + (best.vicinity ? ' \u2014 ' + best.vicinity : '') + ' (~' + Math.round(bestDist) + 'm)';
+    document.getElementById('i911PoiRow').style.display = '';
+    var poiBtn = document.getElementById('i911UsePoiBtn');
+    poiBtn.innerHTML = '<i class="ti ti-building-store"></i> Use ' + best.name.replace(/[<>&]/g, '');
+    poiBtn.style.display = '';
+
+    // Street address lookup failed? Use the place's address as the closest address too.
+    if (!window._i911PendingAddress && best.vicinity) {
+      document.getElementById('i911Address').textContent = best.vicinity;
+    }
+  });
 };
 
 window.dismissI911Modal = function() {
   document.getElementById('i911ResultModal').classList.remove('on');
   window._i911PendingLatLng = null;
   window._i911PendingAddress = null;
+  window._i911PendingPoi = null;
 };
 
-window.useI911Location = function() {
+// mode: 'poi' | 'address' | 'coords'
+window.useI911Location = function(mode) {
   var pending = window._i911PendingLatLng;
   if (!pending) return;
-
   var locEl = document.getElementById('location');
-  var display = window._i911PendingAddress || (pending.lat.toFixed(6) + ', ' + pending.lng.toFixed(6));
-  locEl.value = display;
-  locEl.dataset.lat = pending.lat;
-  locEl.dataset.lng = pending.lng;
-  locEl.dataset.name = '';
-  window.updateZoneBadge();
-  window.dismissI911Modal();
-  showToast('\u2713 Location filled from i911');
+  var coordsText = pending.lat.toFixed(6) + ', ' + pending.lng.toFixed(6);
+
+  function fill(value, lat, lng, name, msg) {
+    locEl.value = value;
+    locEl.dataset.lat = lat;
+    locEl.dataset.lng = lng;
+    locEl.dataset.name = name || '';
+    window.updateZoneBadge();
+    window.dismissI911Modal();
+    showToast('\u2713 ' + msg);
+  }
+
+  if (mode === 'poi' && window._i911PendingPoi) {
+    var poi = window._i911PendingPoi;
+    var fallback = poi.address || coordsText;
+    // Get the full address (with town/state/zip) for the place; fall back to the short one
+    try {
+      var svc = new google.maps.places.PlacesService(document.createElement('div'));
+      svc.getDetails({ placeId: poi.placeId, fields: ['formatted_address'] }, function(det, st) {
+        var addr = (st === google.maps.places.PlacesServiceStatus.OK && det && det.formatted_address) ? det.formatted_address : fallback;
+        var name = window.isMeaningfullyDifferentPoiName(poi.name, addr) ? poi.name : '';
+        fill(addr, poi.lat, poi.lng, name, poi.name + ' filled from i911');
+      });
+    } catch (e) {
+      fill(fallback, poi.lat, poi.lng, poi.name, poi.name + ' filled from i911');
+    }
+    return;
+  }
+
+  if (mode === 'address' && window._i911PendingAddress) {
+    fill(window._i911PendingAddress, pending.lat, pending.lng, '', 'Address filled from i911');
+    return;
+  }
+
+  fill(coordsText, pending.lat, pending.lng, '', 'Coordinates filled from i911');
 };
 
 // ── EZ Spare fitment lookup (Flat Tire → "No spare, needs EZ spare") ──
