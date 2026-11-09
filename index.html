@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Chaverim Bergen County — Emergency Dispatch</title>
+<title>MC-151's Dispatch Console — Chaverim Bergen County</title>
 <link rel="icon" type="image/png" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
 <link rel="apple-touch-icon" href="https://i.ibb.co/Kc2B52nS/download-1.png" />
 <link rel="manifest" href="manifest.json" />
@@ -11,10 +11,9 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="BC Dispatch" />
+<meta name="apple-mobile-web-app-title" content="MC-151 Dispatch" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
-<!-- i911's server runs Socket.IO v2, so the client must be v2 (a v4 client can't connect) -->
-<script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.5.0/dist/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 // Must be global for Google Maps callback — defined before the API script loads
 window.initAutocomplete = function() {
@@ -316,6 +315,80 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
   .preview-lbl::after { content: ''; flex: 1; height: 1px; background: #2A2810; }
   .preview-txt { font-size: 12.5px; color: #E8D98A; font-family: 'SF Mono','Fira Code',monospace; white-space: pre-wrap; line-height: 1.7; }
 
+  /* ── Zello push-to-talk ── */
+  .ptt-wrap { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 900; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ptt-btn { width: 76px; height: 76px; border-radius: 50%; border: 3px solid #C8A532; background: #0F0E06; color: #C8A532; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.35); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; transition: transform 0.1s, background 0.15s, border-color 0.15s; }
+  .ptt-btn i { font-size: 32px; pointer-events: none; }
+  .ptt-btn.connecting { border-color: #F9A825; color: #F9A825; animation: ptt-pulse 1s infinite; }
+  .ptt-btn.talking { background: #C62828; border-color: #FF5252; color: #fff; transform: scale(1.08); box-shadow: 0 0 0 8px rgba(198,40,40,0.25), 0 6px 20px rgba(0,0,0,0.35); }
+  .ptt-btn.sending { border-color: #4CAF50; color: #4CAF50; }
+  .ptt-btn.rx { border-color: #4CAF50; color: #4CAF50; box-shadow: 0 0 0 6px rgba(76,175,80,0.25), 0 6px 20px rgba(0,0,0,0.35); }
+  .ptt-btn.offline { border-color: #6A5A20; color: #6A5A20; }
+  .ptt-row { display: flex; gap: 6px; align-items: center; }
+  .ptt-mute { width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid #C8A532; background: #0F0E06; color: #C8A532; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); padding: 0; }
+  .ptt-mute i { font-size: 16px; }
+  .ptt-mute.muted { color: #E05000; border-color: #E05000; }
+  .ptt-mute.listening { color: #0F0E06; background: #C8A532; animation: ptt-pulse 1s infinite; }
+  @keyframes ptt-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(249,168,37,0.5), 0 6px 20px rgba(0,0,0,0.35); } 50% { box-shadow: 0 0 0 10px rgba(249,168,37,0), 0 6px 20px rgba(0,0,0,0.35); } }
+  .ptt-channel { background: #0F0E06; color: #C8A532; border: 1.5px solid #C8A532; border-radius: 8px; font-size: 12px; font-weight: 700; padding: 5px 26px 5px 9px; width: auto; max-width: 150px; font-family: inherit; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background-position: right 8px center; }
+  .ptt-channel:focus { background-color: #0F0E06; }
+  .ptt-channel:disabled { opacity: 0.6; cursor: not-allowed; }
+  .ptt-label { background: #0F0E06; color: #C8A532; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; }
+  .ptt-label.talking { background: #C62828; color: #fff; }
+  .ptt-label.rx { background: #2E7D32; color: #fff; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+  .page { padding-bottom: 7.5rem; }
+
+  /* ── Active calls board ── */
+  .board { margin-top: 1.75rem; }
+  .board-empty { background: #fff; border: 1px dashed #DDD09A; border-radius: 14px; padding: 1.1rem; text-align: center; font-size: 13px; color: #9A8050; }
+  .call-card { background: #fff; border: 1px solid #DDD09A; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(180,140,20,0.08); }
+  .call-card.urgent { border-color: #E03000; box-shadow: 0 0 0 2px rgba(224,48,0,0.15); }
+  .call-card-hdr { background: #0F0E06; padding: 0.7rem 1rem; display: flex; align-items: center; gap: 8px; }
+  .call-card-num { color: #C8A532; font-weight: 700; font-size: 15px; }
+  .call-card-time { color: #7A6830; font-size: 12px; margin-left: auto; }
+  .call-urgent-tag { background: #E03000; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 4px; }
+  .call-card-body { padding: 0.9rem 1rem 1rem; background: #FDFBF0; }
+  .call-line { font-size: 13.5px; color: #1A1400; line-height: 1.5; margin-bottom: 3px; word-break: break-word; }
+  .call-line b { color: #6B5515; font-weight: 600; }
+  .call-noreply { font-size: 11px; color: #B07020; margin-top: 4px; }
+  .unit-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .unit-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+  .unit-chip.responding { background: #E6F2E6; color: #1E5E22; border: 1px solid #9CCB9F; }
+  .unit-chip.backup { background: #FFF1D6; color: #8A5A00; border: 1px solid #E8C26E; }
+  .unit-chip.observing { background: #E6EEF7; color: #24476B; border: 1px solid #9DB8D6; }
+  .unit-chip .role { font-weight: 500; opacity: 0.8; }
+  .unit-chip button { background: none; border: none; color: inherit; opacity: 0.55; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; font-family: inherit; }
+  .unit-chip button:hover { opacity: 1; }
+  .unit-chip.on-location { background: #1E5E22; color: #fff; border-color: #1E5E22; }
+  .unit-chip.on-location .role { opacity: 0.9; }
+  /* "On location" button inside the unit pill */
+  .unit-chip .onloc-btn { opacity: 1; margin-left: 2px; background: rgba(255,255,255,0.85); border: 1px solid currentColor; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+  .unit-chip .onloc-btn:hover { background: #fff; }
+  .unit-chip.on-location .onloc-btn { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.6); }
+  .unit-chip.on-location .onloc-btn:hover { background: rgba(255,255,255,0.28); }
+  .unit-none { font-size: 12px; color: #9A8050; }
+  .unit-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; }
+  .unit-row input { padding: 9px 12px; }
+  .unit-btn { border: none; border-radius: 9px; padding: 10px 12px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .unit-btn.assign { background: #2E7D32; color: #fff; }
+  .unit-btn.assign:hover { background: #388E3C; }
+  .unit-btn.backup { background: #C88A12; color: #fff; }
+  .unit-btn.backup:hover { background: #D89A22; }
+  .unit-btn.observing { background: #3D6A99; color: #fff; }
+  .unit-btn.observing:hover { background: #4A7BAD; }
+  .clear-call-btn { margin-top: 10px; width: 100%; border: 1.5px solid #8B2000; background: transparent; color: #B02800; border-radius: 10px; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .clear-call-btn:hover { background: #FFF0EA; }
+  .call-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
+  .push-call-btn { width: 100%; border: 1.5px solid #C8A532; background: #C8A532; color: #0F0E06; border-radius: 10px; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .push-call-btn:hover { background: #D8B540; }
+  .push-call-btn:disabled { opacity: 0.5; cursor: wait; }
+  .call-actions .clear-call-btn { margin-top: 0; }
+  .int-call-btn { width: 100%; border: 1.5px solid #2E2A10; background: #0F0E06; color: #C8A532; border-radius: 10px; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .int-call-btn:hover { background: #1C1A08; }
+  .int-call-btn:disabled { opacity: 0.5; cursor: wait; }
+  .call-sent-int { font-size: 11.5px; color: #6B5515; margin-top: 4px; font-weight: 600; }
+  .unit-btn:disabled, .clear-call-btn:disabled { opacity: 0.5; cursor: wait; }
+
   /* ── Responsive / Mobile ── */
   @media (max-width: 600px) {
     /* Page */
@@ -387,6 +460,11 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
     /* Sub header */
     .sub-hdr { font-size: 10px; margin: 1rem 0 0.75rem; }
 
+    /* Active calls: stack unit buttons under the input */
+    .unit-row { grid-template-columns: 1fr 1fr 1fr; }
+    .unit-btn { padding: 10px 6px; }
+    .unit-row input { grid-column: 1 / -1; font-size: 16px; }
+
     /* Clear btn in card header */
     .clear-btn { padding: 5px 10px; font-size: 11px; }
   }
@@ -396,12 +474,27 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
 
 <div class="toast" id="toast"></div>
 
+<!-- Zello two-way radio: listens to the picked channel, hold to talk -->
+<div class="ptt-wrap">
+  <div class="ptt-row">
+    <button type="button" class="ptt-mute" id="pttKeyBtn" onclick="window.setPttKey()" title="Push-to-talk key: Space (click to change)"><i class="ti ti-keyboard"></i></button>
+    <button type="button" class="ptt-mute" id="pttMute" onclick="window.toggleZelloMute()" title="Mute incoming audio"><i class="ti ti-volume"></i></button>
+    <select class="ptt-channel" id="pttChannel" aria-label="Zello channel">
+      <option value="01 Dispatch">01 Dispatch</option>
+      <option value="03 Events">03 Events</option>
+      <option value="Emergency">Emergency</option>
+    </select>
+  </div>
+  <div class="ptt-btn" id="pttBtn" role="button" aria-label="Hold to talk on Zello"><i class="ti ti-microphone"></i></div>
+  <div class="ptt-label" id="pttLabel">Hold to talk</div>
+</div>
+
 <div class="header">
   <div class="logo-badge"><img src="https://i.ibb.co/Kc2B52nS/download-1.png" alt="Chaverim Bergen County logo" /></div>
   <div>
     <div class="brand-name">Chaverim <span class="beta-tag">Beta</span></div>
     <div class="brand-sub">Bergen County</div>
-    <div class="brand-tag">Dispatch Center</div>
+    <div class="brand-tag">MC-151's Dispatch Console</div>
   </div>
   <button id="installAppBtn" onclick="window.installApp()" style="display:none;margin-left:auto;align-items:center;gap:6px;background:#C8A532;color:#0F0E06;border:none;border-radius:9px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">
     <i class="ti ti-download" style="font-size:15px;"></i> Install App
@@ -417,7 +510,7 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
   <div class="form-card">
     <div class="card-hdr">
       <div class="card-ttl"><i class="ti ti-alert-triangle"></i> Dispatch Form</div>
-      <button class="clear-btn" onclick="window.clearForm()"><i class="ti ti-refresh" style="font-size:13px;"></i> Clear Call</button>
+      <button class="clear-btn" onclick="window.clearForm()"><i class="ti ti-refresh" style="font-size:13px;"></i> New Call</button>
     </div>
 
     <div class="card-body">
@@ -445,8 +538,9 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
         <div>
           <div class="lbl"><i class="ti ti-hash"></i> Call # <span class="req">*</span></div>
           <div class="inp-wrap callnum-wrap">
-            <input type="text" id="callNum" placeholder="Enter call #" inputmode="numeric" />
+            <input type="text" id="callNum" placeholder="Loading..." />
             <button class="field-clear" onclick="window.clearField('callNum')" tabindex="-1">&times;</button>
+            <span class="callnum-badge" id="callNumBadge">AUTO</span>
           </div>
         </div>
         <div>
@@ -471,7 +565,7 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
       <div class="field">
         <div class="lbl"><i class="ti ti-map-pin"></i> Location <span class="req">*</span></div>
         <div class="inp-wrap loc-wrap">
-          <input type="text" id="location" placeholder="123 Main St, Edison, NJ" style="padding-right:90px;" oninput="document.getElementById('location').dataset.lat=''; document.getElementById('location').dataset.lng=''; document.getElementById('location').dataset.name=''; window.updateZoneBadge();" />
+          <input type="text" id="location" placeholder="123 Main St, Teaneck, NJ" style="padding-right:90px;" oninput="document.getElementById('location').dataset.lat=''; document.getElementById('location').dataset.lng=''; document.getElementById('location').dataset.name=''; window.updateZoneBadge();" />
           <button class="field-clear" onclick="window.clearField('location')" tabindex="-1" style="right:56px;">&times;</button>
           <button class="map-btn" onclick="window.verifyLocation()"><i class="ti ti-map-pin" style="font-size:12px;"></i> Map</button>
         </div>
@@ -689,7 +783,7 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
       <div class="divider"></div>
 
       <div class="actions">
-        <button class="btn btn-wa" onclick="window.dispatchWhatsApp()"><i class="ti ti-message-circle"></i> Dispatch via WhatsApp</button>
+        <button class="btn btn-wa" id="dispatchWaBtn" onclick="window.dispatchWhatsApp()"><i class="ti ti-message-circle"></i> Dispatch to BC Group</button>
         <button class="btn btn-int" id="dispatchIntBtn" onclick="window.dispatchInterstate()"><i class="ti ti-car"></i> Dispatch to Interstate</button>
         <button class="btn btn-copy" onclick="window.copyMessage()"><i class="ti ti-copy"></i> Copy Message</button>
       </div>
@@ -699,6 +793,16 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
   <div class="preview" id="preview">
     <div class="preview-lbl">Message preview</div>
     <div class="preview-txt" id="previewText"></div>
+  </div>
+
+  <!-- Active calls board -->
+  <div class="board">
+    <div class="section-row">
+      <div class="dot"></div>
+      <div class="section-lbl">Active calls <span id="activeCallCount"></span></div>
+    </div>
+    <div id="activeCallsList"><div class="board-empty">Loading active calls...</div></div>
+    <datalist id="knownUnitsList"></datalist>
   </div>
 </div>
 
@@ -772,13 +876,11 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
         <div><strong style="color:#C8A532;">Coordinates:</strong> <span id="i911Coords"></span></div>
         <div><strong style="color:#C8A532;">Accuracy:</strong> <span id="i911Accuracy"></span></div>
         <div><strong style="color:#C8A532;">Closest address:</strong> <span id="i911Address"></span></div>
-        <div id="i911PoiRow" style="display:none;"><strong style="color:#C8A532;">Nearby place:</strong> <span id="i911Poi"></span></div>
       </div>
-      <div class="modal-btns" style="grid-template-columns:1fr;gap:8px;">
-        <button class="modal-btn modal-btn-ignore" id="i911UsePoiBtn" style="display:none;" onclick="window.useI911Location('poi')"></button>
-        <button class="modal-btn modal-btn-ignore" id="i911UseAddrBtn" style="display:none;" onclick="window.useI911Location('address')"><i class="ti ti-home"></i> Use Address</button>
-        <button class="modal-btn modal-btn-ignore" onclick="window.useI911Location('coords')"><i class="ti ti-map-pin"></i> Use Coordinates</button>
-        <button class="modal-btn modal-btn-no" onclick="window.dismissI911Modal()">Dismiss</button>
+      <div class="modal-btns" style="grid-template-columns:1fr;">
+        <button class="modal-btn modal-btn-ignore" id="i911UseAddrBtn" onclick="window.useI911Location('address')" disabled style="opacity:0.5;">Use Address</button>
+        <button class="modal-btn modal-btn-ignore" onclick="window.useI911Location('coords')" style="margin-top:8px;">Use Coordinates</button>
+        <button class="modal-btn modal-btn-no" onclick="window.dismissI911Modal()" style="margin-top:8px;">Dismiss</button>
       </div>
     </div>
   </div>
@@ -786,7 +888,7 @@ window.isMeaningfullyDifferentPoiName = function(name, address) {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref, get, set, update, remove, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBLbU8jdXP7UEtkndbpcM1I3EeZcChtMpU",
@@ -805,7 +907,7 @@ const db = getDatabase(app);
 window.isUrgent = false;
 window.chips = {};
 window.makesData = {};
-window.customModelsByMake = {};
+window.savedModels = {};   // models dispatchers saved themselves (kept alongside NHTSA's)
 
 // ── Comprehensive built-in makes & models (no seed script needed) ──
 window.makesData = {
@@ -969,10 +1071,10 @@ window.updateZoneBadge = function() {
 };
 
 // ── i911 caller-location request ──
-// Contract (see i911-worker.js): POST {phonenumber:"+1XXXXXXXXXX"} to
-// <I911_PROXY_BASE>/i911 → { webSocketURL } → connect via socket.io and
-// listen for a "location-update" event carrying { latitude, longitude }.
-const I911_PROXY_BASE = 'https://i911.shmueleidelman-work.workers.dev';
+// POST {phonenumber:"+1XXXXXXXXXX"} to <I911_PROXY_BASE>/i911 (the bc-waha
+// Worker holds the i911 API key) → { webSocketURL } → connect via socket.io
+// and listen for "location-update" events carrying { latitude, longitude, accuracy }.
+const I911_PROXY_BASE = 'https://bc-waha.shmueleidelman-work.workers.dev';
 window._i911Socket = null;
 window._i911TimeoutId = null;
 window._i911PendingLatLng = null;
@@ -989,6 +1091,20 @@ function toE164(phoneStr) {
   if (digits.length === 10) return '+1' + digits;
   if (digits.length === 11 && digits.charAt(0) === '1') return '+' + digits;
   return null;
+}
+
+// When the API route fails, say why and ask before opening the i911 website
+function i911Failed(why) {
+  console.warn('i911:', why);
+  window.closeI911Socket();
+  var btn = document.getElementById('i911RequestBtn');
+  if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+  showToast('i911: ' + why);
+  setTimeout(function() {
+    if (confirm('i911 request failed:\n' + why + '\n\nOpen i911.com to request the location by hand?')) {
+      openExternalLink('https://www.i911.com');
+    }
+  }, 50);
 }
 
 window.requestI911Location = async function() {
@@ -1015,20 +1131,14 @@ window.requestI911Location = async function() {
     });
     data = await resp.json().catch(function() { return null; });
   } catch (e) {
-    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-    showToast('Could not reach i911 relay \u2014 opening i911.com instead');
-    console.warn('i911 request error:', e);
-    openExternalLink('https://www.i911.com');
+    i911Failed('could not reach the relay (is the bc-waha Worker deployed?)');
     return;
   }
 
   if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
 
   if (!resp.ok || !data || !data.webSocketURL) {
-    var errMsg = (data && data.error) ? data.error : ('HTTP ' + resp.status);
-    showToast('i911 request failed (' + errMsg + ') \u2014 opening i911.com instead');
-    console.warn('i911 request failed:', errMsg);
-    openExternalLink('https://www.i911.com');
+    i911Failed((data && data.error) ? data.error : ('HTTP ' + resp.status));
     return;
   }
 
@@ -1036,34 +1146,43 @@ window.requestI911Location = async function() {
   window.connectI911Socket(data.webSocketURL);
 };
 
+// Listens for the caller's location through the bc-waha Worker, which
+// connects to i911's Socket.IO feed for us.
 window.connectI911Socket = function(webSocketURL) {
-  if (typeof io !== 'function') {
-    showToast('Location service unavailable \u2014 opening i911.com instead');
-    openExternalLink('https://www.i911.com');
-    return;
-  }
+  var token = null;
+  try { token = new URL(webSocketURL).searchParams.get('token'); } catch (e) {}
+  if (!token) { i911Failed('i911 sent back no session token'); return; }
 
-  // Split "wss://www.i911.com?token=XYZ" into the server address + token,
-  // matching i911's sample code: io('wss://www.i911.com', { query: { token } })
-  var parsed = new URL(webSocketURL);
-  var token = parsed.searchParams.get('token');
-  var socket = io(parsed.origin, { query: { token: token }, transports: ['websocket'], forceNew: true });
-  window._i911Socket = socket;
+  var ws;
+  try {
+    ws = new WebSocket(I911_PROXY_BASE.replace(/^http/, 'ws') + '/i911/listen?token=' + encodeURIComponent(token));
+  } catch (e) { i911Failed('could not open the location feed'); return; }
+  window._i911Socket = ws;
+  var gotLocation = false;
 
-  socket.on('connect_error', function(err) {
-    console.warn('i911 socket connect_error:', err && err.message ? err.message : err);
-    showToast('Could not connect to i911 location service \u2014 opening i911.com instead');
-    window.closeI911Socket();
-    openExternalLink('https://www.i911.com');
-  });
-
-  socket.on('location-update', function(payload) {
-    window.handleI911Location(payload);
-  });
+  ws.onmessage = function(ev) {
+    var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.type === 'connected') {
+      console.log('i911 feed connected');
+    } else if (m.type === 'location') {
+      gotLocation = true;
+      window.handleI911Location(m.data);
+    } else if (m.type === 'error') {
+      if (m.error && m.error.indexOf('timed out') === 0) { showToast('No location received from caller (timed out)'); window.closeI911Socket(); }
+      else i911Failed(m.error || 'location feed error');
+    }
+  };
+  ws.onclose = function() {
+    if (window._i911Socket === ws && !gotLocation) {
+      window._i911Socket = null;
+      // Closed without a reason message: treat as a failure
+      if (window._i911TimeoutId) i911Failed('location feed closed unexpectedly');
+    }
+  };
 
   // Give up if the caller never responds to the location-request text.
-  // This is NOT an API failure (the request itself succeeded — the caller
-  // just hasn't tapped the link yet), so it does not redirect to i911.com.
+  // This is NOT an API failure (the caller just hasn't tapped the link),
+  // so it doesn't offer the website.
   window._i911TimeoutId = setTimeout(function() {
     showToast('No location received from caller (timed out)');
     window.closeI911Socket();
@@ -1073,8 +1192,9 @@ window.connectI911Socket = function(webSocketURL) {
 window.closeI911Socket = function() {
   if (window._i911TimeoutId) { clearTimeout(window._i911TimeoutId); window._i911TimeoutId = null; }
   if (window._i911Socket) {
-    try { window._i911Socket.disconnect(); } catch (e) { /* ignore */ }
+    var s = window._i911Socket;
     window._i911Socket = null;
+    try { s.close(); } catch (e) { /* ignore */ }
   }
 };
 
@@ -1112,145 +1232,80 @@ window.showI911ResultModal = function(lat, lng, accuracy) {
 
   var addrEl = document.getElementById('i911Address');
   addrEl.textContent = 'Looking up nearest address...';
-  window._i911PendingPoi = null;
-  document.getElementById('i911PoiRow').style.display = 'none';
-  document.getElementById('i911UsePoiBtn').style.display = 'none';
-  document.getElementById('i911UseAddrBtn').style.display = 'none';
 
+  var addrBtn = document.getElementById('i911UseAddrBtn');
+  if (addrBtn) { addrBtn.disabled = true; addrBtn.style.opacity = '0.5'; addrBtn.textContent = 'Use Address (looking up\u2026)'; }
   document.getElementById('i911ResultModal').classList.add('on');
 
-  if (!(window.google && google.maps)) {
-    addrEl.textContent = 'Address lookup unavailable';
-    return;
+  // Google first; if it can't (e.g. Geocoding API not enabled on the key),
+  // fall back to OpenStreetMap, which needs no key.
+  function setAddress(addr) {
+    if (window._i911PendingLatLng !== pendingRef) return; // modal moved on
+    addrEl.textContent = addr;
+    window._i911PendingAddress = addr;
+    var ab = document.getElementById('i911UseAddrBtn');
+    if (ab) { ab.disabled = false; ab.style.opacity = ''; ab.textContent = 'Use Address'; }
+  }
+  var pendingRef = window._i911PendingLatLng;
+  var googleStatus = 'not loaded';
+
+  function tryOsm() {
+    fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=' + lat + '&lon=' + lng, {
+      headers: { 'Accept-Language': 'en' }
+    })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(j) {
+        var a = j && j.address;
+        if (!a) throw new Error('no address');
+        var street = [a.house_number, a.road || a.pedestrian || a.footway].filter(Boolean).join(' ');
+        var town = a.city || a.town || a.village || a.hamlet || a.suburb || a.county || '';
+        var parts = [street || (j.name || ''), town, [a.state, a.postcode].filter(Boolean).join(' ')].filter(Boolean);
+        if (!parts.length) throw new Error('empty');
+        setAddress(parts.join(', '));
+      })
+      .catch(function() {
+        if (window._i911PendingLatLng !== pendingRef) return;
+        console.warn('Reverse geocode failed. Google status:', googleStatus);
+        addrEl.textContent = 'Could not resolve a street address (Google: ' + googleStatus + ')';
+        var ab = document.getElementById('i911UseAddrBtn');
+        if (ab) ab.textContent = 'Use Address (none found)';
+      });
   }
 
-  // 1) Street address (Geocoding API)
-  var geocoder = new google.maps.Geocoder();
-  geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
-    if (status === 'OK' && results && results[0]) {
-      window._i911PendingAddress = results[0].formatted_address;
-      addrEl.textContent = results[0].formatted_address;
-      document.getElementById('i911UseAddrBtn').style.display = '';
-    } else {
-      console.warn('i911 reverse geocode status:', status);
-      // Only fill from the nearby-place search below if it hasn't already
-      if (!window._i911PendingAddress) {
-        addrEl.textContent = status === 'REQUEST_DENIED'
-          ? 'Not available (Geocoding API not enabled on Google key)'
-          : 'Could not resolve a street address for this location';
-      }
-    }
-  });
-
-  // 2) Nearby place / POI (Places API \u2014 same library as the autocomplete)
-  window.findI911NearbyPoi(lat, lng, accuracy);
-};
-
-// Straight-line distance in meters between two lat/lng points
-function i911DistanceM(lat1, lng1, lat2, lng2) {
-  var R = 6371000, toRad = Math.PI / 180;
-  var dLat = (lat2 - lat1) * toRad, dLng = (lng2 - lng1) * toRad;
-  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// Looks for a real business/landmark close to the caller. Only offered when
-// it's within the GPS accuracy circle (+ a small buffer), so we never suggest
-// a store down the block when the caller is really at a house.
-var I911_NON_POI_TYPES = ['locality', 'political', 'route', 'neighborhood', 'sublocality',
-  'administrative_area_level_1', 'administrative_area_level_2', 'postal_code', 'street_address', 'premise'];
-
-window.findI911NearbyPoi = function(lat, lng, accuracy) {
-  if (!(google.maps.places && google.maps.places.PlacesService)) return;
-  var acc = (accuracy != null && !isNaN(accuracy)) ? accuracy : 30;
-  var maxDist = Math.min(Math.max(acc, 20) + 30, 150);
-
-  var svc = new google.maps.places.PlacesService(document.createElement('div'));
-  svc.nearbySearch({ location: { lat: lat, lng: lng }, radius: Math.ceil(maxDist) }, function(results, status) {
-    if (status !== google.maps.places.PlacesServiceStatus.OK || !results) {
-      if (status !== 'ZERO_RESULTS') console.warn('i911 nearby place status:', status);
-      return;
-    }
-    var best = null, bestDist = Infinity;
-    results.forEach(function(r) {
-      if (!r.geometry || !r.geometry.location || !r.name) return;
-      var types = r.types || [];
-      var isPoi = types.some(function(t) { return I911_NON_POI_TYPES.indexOf(t) === -1; });
-      if (!isPoi) return;
-      var d = i911DistanceM(lat, lng, r.geometry.location.lat(), r.geometry.location.lng());
-      if (d <= maxDist && d < bestDist) { best = r; bestDist = d; }
+  if (window.google && google.maps && google.maps.Geocoder) {
+    var geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
+      googleStatus = status;
+      if (status === 'OK' && results && results[0]) setAddress(results[0].formatted_address);
+      else { console.warn('Google reverse geocode status:', status); tryOsm(); }
     });
-    if (!best) return;
-
-    window._i911PendingPoi = {
-      name: best.name,
-      placeId: best.place_id,
-      address: best.vicinity || '',
-      lat: best.geometry.location.lat(),
-      lng: best.geometry.location.lng()
-    };
-    document.getElementById('i911Poi').textContent =
-      best.name + (best.vicinity ? ' \u2014 ' + best.vicinity : '') + ' (~' + Math.round(bestDist) + 'm)';
-    document.getElementById('i911PoiRow').style.display = '';
-    var poiBtn = document.getElementById('i911UsePoiBtn');
-    poiBtn.innerHTML = '<i class="ti ti-building-store"></i> Use ' + best.name.replace(/[<>&]/g, '');
-    poiBtn.style.display = '';
-
-    // Street address lookup failed? Use the place's address as the closest address too.
-    if (!window._i911PendingAddress && best.vicinity) {
-      document.getElementById('i911Address').textContent = best.vicinity;
-    }
-  });
+  } else {
+    tryOsm();
+  }
 };
 
 window.dismissI911Modal = function() {
   document.getElementById('i911ResultModal').classList.remove('on');
   window._i911PendingLatLng = null;
   window._i911PendingAddress = null;
-  window._i911PendingPoi = null;
 };
 
-// mode: 'poi' | 'address' | 'coords'
+// mode: 'address' fills the street address, 'coords' fills "lat, lng".
+// Either way the exact i911 coordinates are kept for the map pin / links.
 window.useI911Location = function(mode) {
   var pending = window._i911PendingLatLng;
   if (!pending) return;
+
   var locEl = document.getElementById('location');
-  var coordsText = pending.lat.toFixed(6) + ', ' + pending.lng.toFixed(6);
-
-  function fill(value, lat, lng, name, msg) {
-    locEl.value = value;
-    locEl.dataset.lat = lat;
-    locEl.dataset.lng = lng;
-    locEl.dataset.name = name || '';
-    window.updateZoneBadge();
-    window.dismissI911Modal();
-    showToast('\u2713 ' + msg);
-  }
-
-  if (mode === 'poi' && window._i911PendingPoi) {
-    var poi = window._i911PendingPoi;
-    var fallback = poi.address || coordsText;
-    // Get the full address (with town/state/zip) for the place; fall back to the short one
-    try {
-      var svc = new google.maps.places.PlacesService(document.createElement('div'));
-      svc.getDetails({ placeId: poi.placeId, fields: ['formatted_address'] }, function(det, st) {
-        var addr = (st === google.maps.places.PlacesServiceStatus.OK && det && det.formatted_address) ? det.formatted_address : fallback;
-        var name = window.isMeaningfullyDifferentPoiName(poi.name, addr) ? poi.name : '';
-        fill(addr, poi.lat, poi.lng, name, poi.name + ' filled from i911');
-      });
-    } catch (e) {
-      fill(fallback, poi.lat, poi.lng, poi.name, poi.name + ' filled from i911');
-    }
-    return;
-  }
-
-  if (mode === 'address' && window._i911PendingAddress) {
-    fill(window._i911PendingAddress, pending.lat, pending.lng, '', 'Address filled from i911');
-    return;
-  }
-
-  fill(coordsText, pending.lat, pending.lng, '', 'Coordinates filled from i911');
+  var coords = pending.lat.toFixed(6) + ', ' + pending.lng.toFixed(6);
+  var display = (mode === 'address' && window._i911PendingAddress) ? window._i911PendingAddress : coords;
+  locEl.value = display;
+  locEl.dataset.lat = pending.lat;
+  locEl.dataset.lng = pending.lng;
+  locEl.dataset.name = '';
+  window.updateZoneBadge();
+  window.dismissI911Modal();
+  showToast('\u2713 ' + (display === coords ? 'Coordinates' : 'Address') + ' filled from i911');
 };
 
 // ── EZ Spare fitment lookup (Flat Tire → "No spare, needs EZ spare") ──
@@ -1516,15 +1571,20 @@ window.fillFromLiveCall = function() {
   }
 };
 
-// Start polling every 5 seconds once page loads
-if (TELZIO_PROXY_URL.indexOf('YOUR-WORKER') === -1) {
-  pollTelzioLiveCalls();
-  telzioInterval = setInterval(pollTelzioLiveCalls, 5000);
+// Start polling every 5 seconds
+function startTelzioPolling() {
+  if (TELZIO_PROXY_URL.indexOf('YOUR-WORKER') === -1 && !telzioInterval) {
+    pollTelzioLiveCalls();
+    telzioInterval = setInterval(pollTelzioLiveCalls, 5000);
+  }
 }
 
 // ── Load all data on startup ──
 async function loadAll() {
   try {
+    // 1. Next call number = last Call# in the group + 1 (Firebase as backup)
+    await fillNextCallNumber();
+
     // 2. Colors from Firebase (with defaults)
     const colorsSnap = await get(ref(db, 'colors'));
     var colorList = [];
@@ -1542,7 +1602,7 @@ async function loadAll() {
     if (makesSnap.exists()) {
       const saved = makesSnap.val();
       Object.keys(saved).forEach(function(m) {
-        window.customModelsByMake[m] = Array.isArray(saved[m]) ? saved[m].slice() : [];
+        window.savedModels[m] = Array.isArray(saved[m]) ? saved[m].slice() : [];
         if (!window.makesData[m]) window.makesData[m] = saved[m];
         else {
           // Merge custom models into existing make
@@ -1584,6 +1644,8 @@ async function loadAll() {
     populateMakes(window.makesData);
     populateColors(['Beige','Black','Blue','Brown','Gold','Gray','Green','Maroon','Navy','Orange','Pink','Purple','Red','Silver','Tan','White','Yellow']);
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
+    document.getElementById('callNum').value = '';
+    document.getElementById('callNum').placeholder = 'Enter manually';
     setTimeout(function(){ document.getElementById('dbLoading').classList.add('hidden'); }, 3000);
   }
 }
@@ -1916,9 +1978,8 @@ window.selectYear = function(year) {
   if (menu) menu.classList.remove('open');
   var customWrap = document.getElementById('customYearWrap');
   if (customWrap) customWrap.style.display = (year === 'Other') ? 'block' : 'none';
-  var mk = document.getElementById('vMake') ? document.getElementById('vMake').value : '';
-  if (mk && window.loadModelsForMake) window.loadModelsForMake(mk);
   if (window.refreshVehicleTrim) window.refreshVehicleTrim();
+  if (window.loadNhtsaModels) window.loadNhtsaModels();
 };
 
 // Mobile: bottom-sheet overlay (same pattern as the color picker)
@@ -1971,10 +2032,17 @@ window.setYear = function(year) {
   if (label) label.textContent = year || '— Select year —';
   var customWrap = document.getElementById('customYearWrap');
   if (customWrap) customWrap.style.display = (year === 'Other') ? 'block' : 'none';
-  var mk = document.getElementById('vMake') ? document.getElementById('vMake').value : '';
-  if (mk && window.loadModelsForMake) window.loadModelsForMake(mk);
   if (window.refreshVehicleTrim) window.refreshVehicleTrim();
+  if (window.loadNhtsaModels) window.loadNhtsaModels();
 };
+
+// Typed-in year (Other): reload models once it's 4 digits
+(function() {
+  var cy = document.getElementById('customYear');
+  if (cy) cy.addEventListener('input', function() {
+    if (/^\d{4}$/.test(cy.value.trim()) && window.loadNhtsaModels) window.loadNhtsaModels();
+  });
+})();
 
 // Build the year picker UI for the current device, and reset it to blank
 function buildYearUI() {
@@ -2260,82 +2328,6 @@ function populateModelOptions(models) {
   if (!isMobile) buildModelDropdownMenu(withOther);
 }
 
-// ── Live model list from NHTSA vPIC (free U.S. gov't vehicle database, no key) ──
-// When a make AND a year are chosen, the Model list comes from NHTSA for that
-// exact make + year, plus any custom models dispatchers saved in Firebase.
-// No year yet, or NHTSA unreachable → falls back to the built-in list.
-window.customModelsByMake = window.customModelsByMake || {};
-var nhtsaModelCache = {};
-var nhtsaRequestSeq = 0;
-
-function getSelectedYear() {
-  var y = document.getElementById('vYear') ? document.getElementById('vYear').value.trim() : '';
-  if (y === 'Other') y = document.getElementById('customYear') ? document.getElementById('customYear').value.trim() : '';
-  return /^(19|20)\d\d$/.test(y) ? y : '';
-}
-
-function builtInModelsFor(make) {
-  var models = window.makesData[make];
-  if (models && models.models) models = models.models;
-  return Array.isArray(models) ? models : [];
-}
-
-function mergeModelLists(a, b) {
-  var seen = {}, out = [];
-  a.concat(b).forEach(function(m) {
-    var k = String(m || '').trim().toLowerCase();
-    if (k && !seen[k]) { seen[k] = true; out.push(String(m).trim()); }
-  });
-  return out.sort(function(x, y) { return x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }); });
-}
-
-async function fetchNhtsaModels(make, year) {
-  var key = make.toLowerCase() + '|' + year;
-  if (nhtsaModelCache[key]) return nhtsaModelCache[key];
-  var url = 'https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/' +
-    encodeURIComponent(make) + '/modelyear/' + year + '?format=json';
-  var resp = await fetch(url);
-  if (!resp.ok) throw new Error('NHTSA HTTP ' + resp.status);
-  var data = await resp.json();
-  var names = (data.Results || []).map(function(r) { return r.Model_Name; }).filter(Boolean);
-  nhtsaModelCache[key] = names;
-  return names;
-}
-
-// Rebuild the Model list for the current make/year. Keeps the selected model
-// if it's still in the new list.
-window.loadModelsForMake = async function(make) {
-  if (!make || make === 'Other') return;
-  var year = getSelectedYear();
-  var custom = window.customModelsByMake[make] || [];
-  var seq = ++nhtsaRequestSeq;
-  var current = document.getElementById('vModel') ? document.getElementById('vModel').value : '';
-
-  if (!year) { populateModelOptions(mergeModelLists(builtInModelsFor(make), custom)); return; }
-
-  try {
-    var live = await fetchNhtsaModels(make, year);
-    if (seq !== nhtsaRequestSeq) return;                       // user picked something else meanwhile
-    if (document.getElementById('vMake').value !== make) return;
-    if (!live.length) throw new Error('no models');
-    populateModelOptions(mergeModelLists(live, custom));
-  } catch (e) {
-    console.warn('NHTSA model lookup failed, using built-in list:', e.message || e);
-    if (seq !== nhtsaRequestSeq) return;
-    populateModelOptions(mergeModelLists(builtInModelsFor(make), custom));
-  }
-
-  if (current && current !== 'Other') {
-    var still = window._modelOptions.some(function(m) { return m.toLowerCase() === current.toLowerCase(); });
-    if (still && !isMobile) {
-      var menu = document.getElementById('modelDropdownMenu');
-      if (menu) menu.querySelectorAll('.color-option').forEach(function(o){
-        o.classList.toggle('selected', o.dataset.value.toLowerCase() === current.toLowerCase());
-      });
-    }
-  }
-};
-
 var modelDropdownOutsideHandler = null;
 window.toggleModelDropdown = function() {
   if (!window._modelEnabled) { showToast('Select a make first'); return; }
@@ -2409,6 +2401,67 @@ function populateMakes(makesObj) {
   if (!isMobile) buildMakeDropdownMenu(withOther);
 };
 
+// ── NHTSA model lists ──
+// Models come from NHTSA's vPIC database (through the bc-waha Worker), for the
+// picked make and, when set, the picked year. The built-in list shows first
+// and stays as the backup if NHTSA can't be reached.
+const NHTSA_PROXY = 'https://bc-waha.shmueleidelman-work.workers.dev/nhtsa/models';
+var nhtsaCache = {};
+var nhtsaSeq = 0;
+
+function currentVehicleYear() {
+  var y = (document.getElementById('vYear') || {}).value || '';
+  if (y === 'Other') y = ((document.getElementById('customYear') || {}).value || '').trim();
+  return /^\d{4}$/.test(y) ? y : '';
+}
+
+function nhtsaMakeName(make) {
+  // A few makes are named differently in NHTSA's database
+  var map = { 'Mini': 'MINI', 'Ram': 'RAM', 'Mercedes': 'Mercedes-Benz' };
+  return map[make] || make;
+}
+
+window.loadNhtsaModels = async function() {
+  var make = ((document.getElementById('vMake') || {}).value || '').trim();
+  if (!make || make === 'Other') return;
+  var year = currentVehicleYear();
+  var key = make.toLowerCase() + '|' + year;
+  var seq = ++nhtsaSeq;
+
+  var models = nhtsaCache[key];
+  if (!models) {
+    try {
+      var r = await fetch(NHTSA_PROXY + '?make=' + encodeURIComponent(nhtsaMakeName(make)) + (year ? '&year=' + year : ''));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var j = await r.json();
+      models = Array.isArray(j.models) ? j.models : [];
+      nhtsaCache[key] = models;
+    } catch (e) {
+      console.warn('NHTSA models unavailable, using built-in list:', e);
+      return;
+    }
+  }
+  // Ignore if the dispatcher changed make/year while this was loading
+  if (seq !== nhtsaSeq || ((document.getElementById('vMake') || {}).value || '').trim() !== make) return;
+  if (!models.length) return; // NHTSA had nothing — keep the built-in list
+
+  var merged = models.slice();
+  var lower = merged.map(function(m) { return m.toLowerCase(); });
+  (window.savedModels[make] || []).forEach(function(m) {
+    if (lower.indexOf(String(m).toLowerCase()) === -1) { merged.push(m); lower.push(String(m).toLowerCase()); }
+  });
+  // Keep whatever model is already picked, even if it isn't in the new list
+  var picked = ((document.getElementById('vModel') || {}).value || '').trim();
+  if (picked && picked !== 'Other' && lower.indexOf(picked.toLowerCase()) === -1) merged.push(picked);
+  merged.sort(function(a, b) { return a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }); });
+
+  populateModelOptions(merged);
+  if (picked && !isMobile) {
+    var menu = document.getElementById('modelDropdownMenu');
+    if (menu) menu.querySelectorAll('.color-option').forEach(function(o) { o.classList.toggle('selected', o.dataset.value === picked); });
+  }
+};
+
 // ── Select a make: updates label/menu, logo, and dependent model list ──
 window.selectMake = function(make) {
   document.getElementById('vMake').value = make;
@@ -2432,14 +2485,14 @@ window.selectMake = function(make) {
   updateMakeLogo(make === 'Other' ? '' : make);
 
   window.resetModelUI();
-  if (make && make !== 'Other') {
-    populateModelOptions(mergeModelLists(builtInModelsFor(make), window.customModelsByMake[make] || []));
-    window.loadModelsForMake(make);
-    if (window.refreshVehicleTrim) window.refreshVehicleTrim();
-    return;
+  if (make && make !== 'Other' && window.makesData[make]) {
+    var models = window.makesData[make];
+    if (models.models) models = models.models;
+    if (Array.isArray(models)) { populateModelOptions(models); if (window.refreshVehicleTrim) window.refreshVehicleTrim(); window.loadNhtsaModels(); return; }
   }
   populateModelOptions([]);
   if (window.refreshVehicleTrim) window.refreshVehicleTrim();
+  window.loadNhtsaModels();
 };
 
 // ── Select a model: updates label/menu ──
@@ -2580,9 +2633,11 @@ window.saveCustomModel = async function() {
     }
     models.push(model); models.sort();
     await set(ref(db, 'makes/' + make), models);
-    window.customModelsByMake[make] = models.slice();
-    populateModelOptions(mergeModelLists(window._modelOptions.filter(function(m){ return m !== 'Other'; }), models));
+    window.makesData[make] = models;
+    window.savedModels[make] = (window.savedModels[make] || []).concat([model]);
+    populateModelOptions(models);
     window.selectModel(model);
+    window.loadNhtsaModels();
     showToast('\u2713 Saved model "' + model + '"');
   } catch(e) { showToast('Could not save — check connection'); }
 };
@@ -2856,7 +2911,10 @@ async function saveCallNumber(num) {
   var parsed = parseInt(num, 10);
   if (isNaN(parsed)) return; // nothing valid to save (e.g. Interstate dispatch with no Call #)
   try {
-    await set(ref(db, 'meta/lastCallNumber'), parsed);
+    // Only ever move the number forward (safe if two dispatchers save at once)
+    await runTransaction(ref(db, 'meta/lastCallNumber'), function(cur) {
+      return Math.max(cur || 0, parsed);
+    });
   } catch(e) { console.warn('Could not save call number:', e); }
 }
 
@@ -2928,9 +2986,11 @@ function buildWA(d) {
 
 function buildInt(d) {
   var lines = [];
+  // From a call card these come saved with the call; from the form, use the form's
+  var locked = d.lockedInside != null ? d.lockedInside : window.lockedInsideNote;
   if (d.urgent) lines.push('*URGENT*');
-  if (window.lockedInsideNote) lines.push('*' + window.lockedInsideNote.toUpperCase() + '*');
-  if (d.urgent || window.lockedInsideNote) lines.push('');
+  if (locked) lines.push('*' + locked.toUpperCase() + '*');
+  if (d.urgent || locked) lines.push('');
   lines.push('New Call (BC)');
   lines.push('');
   if (d.poiName) lines.push(d.poiName);
@@ -2942,7 +3002,7 @@ function buildInt(d) {
   lines.push('Name: ' + d.name);
   lines.push('');
   lines.push('Nature: ' + d.nature);
-  var ezLinesInt = buildEzSpareLines();
+  var ezLinesInt = d.ezLines != null ? d.ezLines : buildEzSpareLines();
   if (ezLinesInt.length) { lines.push(''); ezLinesInt.forEach(function(l){ lines.push(l); }); }
   return lines.join('\n');
 }
@@ -3189,10 +3249,133 @@ window.dispatchWhatsApp = async function() {
     var missing = getMissingFields(d, ['callNum', 'location', 'nature', 'phone']);
     if (missing.length) { window.showMissingInfoModal(missing, window.dispatchWhatsApp); return; }
   }
+  // Someone else may have dispatched since this form loaded — re-check the group
+  var callNumEl = document.getElementById('callNum');
+  var mine = parseInt(d.callNum, 10);
+  var groupLast = await getGroupLastCallNumber();
+  if (groupLast != null && !isNaN(mine) && mine <= groupLast) {
+    callNumEl.value = groupLast + 1;
+    d.callNum = String(groupLast + 1);
+    showToast('Call#' + mine + ' was already used \u2014 changed to Call#' + d.callNum);
+  }
+
   var msg = buildWA(d);
   showPreview(msg);
-  openExternalLink('https://wa.me/?text=' + encodeURIComponent(msg));
+
+  var btn = document.getElementById('dispatchWaBtn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  showToast('Sending to Bergen County Chaverim Dispatch...');
+
+  var sent = await sendViaWaha(msg);
+
+  if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+
+  if (sent.ok) {
+    await saveCallNumber(d.callNum);
+    await createActiveCall(d, sent.messageId);
+    showToast('\u2713 Sent to Bergen County Chaverim Dispatch');
+  } else {
+    // WAHA didn't work — fall back to the old way so the call still goes out
+    console.warn('WAHA send failed:', sent.error);
+    showToast('WAHA failed (' + sent.error + ') \u2014 opening WhatsApp instead');
+    await saveCallNumber(d.callNum);
+    await createActiveCall(d, '');
+    openExternalLink('https://wa.me/?text=' + encodeURIComponent(msg));
+  }
 };
+
+// ── Call# from the group: finds the newest dispatch message ("Call#:3883 ...
+// Location: ...") in the BC Dispatch group and returns its number. Returns
+// null if the group can't be reached, so callers can fall back to Firebase.
+const WAHA_LAST_CALL_URL = 'https://bc-waha.shmueleidelman-work.workers.dev/last-call';
+
+async function getGroupLastCallNumber() {
+  try {
+    var resp = await fetch(WAHA_LAST_CALL_URL, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    var n = parseInt(data && data.lastCallNumber, 10);
+    return isNaN(n) ? null : n;
+  } catch (e) {
+    console.warn('Could not read last Call# from group:', e);
+    return null;
+  }
+}
+
+// Works out the next Call#: last Call# posted in the group + 1.
+// Falls back to the Firebase counter if the group can't be read.
+async function getNextCallNumber() {
+  var groupLast = await getGroupLastCallNumber();
+  if (groupLast != null) return { next: groupLast + 1, source: 'group' };
+  try {
+    var snap = await get(ref(db, 'meta/lastCallNumber'));
+    return { next: (snap.exists() ? snap.val() : 1000) + 1, source: 'firebase' };
+  } catch (e) {
+    return { next: null, source: 'none' };
+  }
+}
+
+async function fillNextCallNumber() {
+  var el = document.getElementById('callNum');
+  var badge = document.getElementById('callNumBadge');
+  var r = await getNextCallNumber();
+  if (r.next == null) { el.value = ''; el.placeholder = 'Enter manually'; return r; }
+  el.value = r.next;
+  el.dataset.auto = r.next;
+  if (badge) badge.textContent = r.source === 'group' ? 'FROM GROUP' : 'AUTO';
+  return r;
+}
+
+// ── WAHA: sends the dispatch message to the BC Dispatch WhatsApp group ──
+// The page talks to a Cloudflare Worker, which holds the WAHA address + API key
+// (so the key is never visible in this page). The Worker is locked to
+// session "Personal_BC_Dispatch" and group 120363264369523011@g.us.
+const WAHA_PROXY_URL = 'https://bc-waha.shmueleidelman-work.workers.dev/send';
+
+async function sendViaWaha(text, replyTo, to) {
+  try {
+    var payload = { text: text };
+    if (replyTo) payload.reply_to = replyTo;
+    if (to) payload.to = to;   // 'bc' (default) or 'interstate'
+    var resp = await fetch(WAHA_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    var data = await resp.json().catch(function() { return null; });
+    if (!resp.ok) return { ok: false, error: (data && data.error) ? data.error : ('HTTP ' + resp.status) };
+    return { ok: true, messageId: (data && data.messageId) ? data.messageId : '' };
+  } catch (e) {
+    return { ok: false, error: 'could not reach relay' };
+  }
+}
+
+// Interstate does not dispatch in Bergen's primary zone, and only in the
+// secondary zone if Bergen asks — confirm before sending in either case.
+function interstateZoneOk(zone) {
+  if (zone === 'primary') {
+    return confirm('This location is in Bergen\u2019s PRIMARY coverage zone.\nInterstate does not dispatch calls here \u2014 Bergen County Chaverim handles these directly (201-800-4357).\n\nSend to Interstate anyway?');
+  }
+  if (zone === 'secondary') {
+    return confirm('This location is in Bergen\u2019s SECONDARY zone.\nInterstate only dispatches here if Bergen County Chaverim requests it.\n\nContinue?');
+  }
+  return true;
+}
+
+// Sends a message to Interstate through WAHA. If WAHA fails, opens WhatsApp
+// with the message filled in instead, so the call still goes out.
+async function sendToInterstate(msg) {
+  showToast('Sending to Interstate...');
+  var sent = await sendViaWaha(msg, '', 'interstate');
+  if (sent.ok) {
+    showToast('\u2713 Sent to Interstate');
+    return true;
+  }
+  console.warn('WAHA Interstate send failed:', sent.error);
+  showToast('WAHA failed (' + sent.error + ') \u2014 opening WhatsApp instead');
+  openExternalLink('https://wa.me/18458524357?text=' + encodeURIComponent(msg));
+  return false;
+}
 
 window.dispatchInterstate = async function() {
   var d = getFormData();
@@ -3201,22 +3384,805 @@ window.dispatchInterstate = async function() {
     if (missing.length) { window.showMissingInfoModal(missing, window.dispatchInterstate); return; }
   }
 
-  // Interstate does not dispatch in Bergen's primary zone.
   // (The "outside coverage" case is already flagged automatically the moment
-  // the location resolves, via the shared dispatch-check modal — no need to block here too.)
-  var zone = window.getZone(d.lat, d.lng) || window.currentZone;
-  if (zone === 'primary') {
-    var ok = confirm('This location is in Bergen\u2019s PRIMARY coverage zone.\nInterstate does not dispatch calls here \u2014 Bergen County Chaverim handles these directly (201-800-4357).\n\nSend to Interstate anyway?');
-    if (!ok) return;
-  } else if (zone === 'secondary') {
-    var ok2 = confirm('This location is in Bergen\u2019s SECONDARY zone.\nInterstate only dispatches here if Bergen County Chaverim requests it.\n\nContinue?');
-    if (!ok2) return;
-  }
+  // the location resolves, via the shared dispatch-check modal.)
+  if (!interstateZoneOk(window.getZone(d.lat, d.lng) || window.currentZone)) return;
 
   var msg = buildInt(d);
   showPreview(msg);
-  openExternalLink('https://wa.me/18458524357?text=' + encodeURIComponent(msg));
+  var btn = document.getElementById('dispatchIntBtn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  await saveCallNumber(d.callNum);
+  await sendToInterstate(msg);
+  if (btn) { btn.disabled = false; btn.style.opacity = ''; }
 };
+
+// ── Active calls board ──────────────────────────────────────────────
+// Calls live in Firebase at activeCalls/<id> while open, and move to
+// callHistory/<id> when cleared. Every update (unit responding, unit backing
+// up, call cleared) is posted to the BC Dispatch group as a WhatsApp REPLY to
+// the original call message, so it shows up threaded under that call.
+window._activeCalls = {};
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+// Firebase keys can't contain . # $ [ ] /
+function fbKey(s) {
+  return String(s || '').trim().replace(/[.#$\[\]\/\s]+/g, '_').slice(0, 60);
+}
+
+async function createActiveCall(d, waMessageId) {
+  var id = d.callNum ? fbKey(d.callNum) : ('U' + Date.now());
+  var call = {
+    id: id,
+    callNum: d.callNum || '',
+    location: d.location || '',
+    poiName: d.poiName || '',
+    nature: d.nature || '',
+    phone: d.phone || '',
+    name: d.name || '',
+    urgent: !!d.urgent,
+    lockedInside: window.lockedInsideNote || '',
+    ezLines: buildEzSpareLines(),
+    lat: d.lat || null,
+    lng: d.lng || null,
+    waMessageId: waMessageId || '',
+    createdAt: Date.now()
+  };
+  try {
+    await set(ref(db, 'activeCalls/' + id), call);
+  } catch (e) {
+    console.warn('Could not save active call:', e);
+    showToast('Call sent, but it could not be added to the call board');
+  }
+}
+
+function callLabel(call) {
+  return call.callNum ? ('Call#' + call.callNum) : 'Call';
+}
+
+// Posts an update as a reply to the call's original message. If WAHA is down,
+// falls back to opening WhatsApp so the update still goes out.
+async function postCallUpdate(call, text) {
+  // If we don't have the original message to reply to, add the Call# and
+  // location so the group still knows which call this is about.
+  if (!call.waMessageId) text += '\n' + callLabel(call) + (call.location ? ' · ' + call.location : '');
+  var sent = await sendViaWaha(text, call.waMessageId || '');
+  if (!sent.ok) {
+    console.warn('WAHA update failed:', sent.error);
+    showToast('WAHA failed (' + sent.error + ') — opening WhatsApp instead');
+    openExternalLink('https://wa.me/?text=' + encodeURIComponent(text));
+    return false;
+  }
+  return true;
+}
+
+function setCardBusy(id, busy) {
+  var card = document.getElementById('callCard_' + id);
+  if (!card) return;
+  card.querySelectorAll('button, input').forEach(function(el) { el.disabled = busy; });
+}
+
+// What each role is called: in the WhatsApp reply, and on the board
+var UNIT_ROLES = {
+  responding: { reply: 'Responding', board: 'responding' },
+  backup:     { reply: 'Backing Up', board: 'backing up' },
+  observing:  { reply: 'Observing',  board: 'observing' }
+};
+
+window.callAddUnit = async function(id, role) {
+  if (!UNIT_ROLES[role]) role = 'responding';
+  var call = window._activeCalls[id];
+  if (!call) return;
+  var input = document.getElementById('unitInput_' + id);
+  var unit = input ? input.value.trim().toUpperCase() : '';
+  if (!unit) { showToast('Type a unit number first'); if (input) input.focus(); return; }
+
+  var key = fbKey(unit);
+  var existing = call.units && call.units[key];
+  if (existing && existing.role === role) {
+    showToast(unit + ' is already ' + UNIT_ROLES[role].board);
+    return;
+  }
+
+  var text = unit + ' ' + UNIT_ROLES[role].reply;
+
+  setCardBusy(id, true);
+  if (input) input.value = ''; // clear before saving — the board redraws on save
+  try {
+    var updates = {};
+    updates['activeCalls/' + id + '/units/' + key] = { unit: unit, role: role, at: Date.now() };
+    updates['knownUnits/' + key] = unit;
+    await update(ref(db), updates);
+    if (await postCallUpdate(call, text)) showToast('✓ ' + unit + ' ' + UNIT_ROLES[role].board);
+  } catch (e) {
+    console.warn('Could not add unit:', e);
+    var again = document.getElementById('unitInput_' + id);
+    if (again) again.value = unit; // put it back so they can retry
+    showToast('Could not save — check connection');
+  }
+  setCardBusy(id, false);
+};
+
+// Removes a unit from the board only (for typos). No WhatsApp message.
+// Marks a unit on location (or undoes it). Board only — nothing is sent to the group.
+window.callToggleOnLocation = async function(id, key) {
+  var call = window._activeCalls[id];
+  if (!call || !call.units || !call.units[key]) return;
+  var u = call.units[key];
+  var on = !u.onLocation;
+  try {
+    var updates = {};
+    updates['activeCalls/' + id + '/units/' + key + '/onLocation'] = on ? true : null;
+    updates['activeCalls/' + id + '/units/' + key + '/onLocationAt'] = on ? Date.now() : null;
+    await update(ref(db), updates);
+    showToast(on ? (u.unit + ' on location') : (u.unit + ' no longer marked on location'));
+  } catch (e) { showToast('Could not save \u2014 check connection'); }
+};
+
+window.callRemoveUnit = async function(id, key) {
+  var call = window._activeCalls[id];
+  if (!call || !call.units || !call.units[key]) return;
+  if (!confirm('Remove ' + call.units[key].unit + ' from ' + callLabel(call) + '?\n(No message is sent to the group.)')) return;
+  try { await remove(ref(db, 'activeCalls/' + id + '/units/' + key)); }
+  catch (e) { showToast('Could not save — check connection'); }
+};
+
+// Sends a call from the board to Interstate through WAHA (same message as
+// the form's "Dispatch to Interstate" button)
+window.callSendInterstate = async function(id) {
+  var call = window._activeCalls[id];
+  if (!call) return;
+  if (call.interstateAt && !confirm(callLabel(call) + ' was already sent to Interstate at ' + formatTime(call.interstateAt) + '.\nSend it again?')) return;
+  if (!interstateZoneOk(window.getZone(call.lat, call.lng))) return;
+
+  var msg = buildInt({
+    urgent: !!call.urgent,
+    lockedInside: call.lockedInside || '',
+    ezLines: Array.isArray(call.ezLines) ? call.ezLines : [],
+    poiName: call.poiName || '',
+    location: call.location || '',
+    lat: call.lat || null,
+    lng: call.lng || null,
+    phone: call.phone || '',
+    name: call.name || '',
+    nature: call.nature || ''
+  });
+  setCardBusy(id, true);
+  await sendToInterstate(msg);
+  setCardBusy(id, false);
+  try { await update(ref(db, 'activeCalls/' + id), { interstateAt: Date.now() }); } catch (e) {}
+};
+
+// "Pushes" the call: replies to the original call message asking for units
+var PUSH_CALL_TEXT = 'Any units available to respond';
+
+window.callPush = async function(id) {
+  var call = window._activeCalls[id];
+  if (!call) return;
+  setCardBusy(id, true);
+  try {
+    if (await postCallUpdate(call, PUSH_CALL_TEXT)) {
+      showToast('\u2713 Pushed ' + callLabel(call));
+      try {
+        await update(ref(db, 'activeCalls/' + id), { lastPushAt: Date.now(), pushCount: (call.pushCount || 0) + 1 });
+      } catch (e) {}
+    }
+  } finally {
+    setCardBusy(id, false);
+  }
+};
+
+window.callClear = async function(id) {
+  var call = window._activeCalls[id];
+  if (!call) return;
+  if (!confirm('Clear ' + callLabel(call) + '?\nA "call cleared" message will be sent to the group.')) return;
+
+  var text = 'Call Cleared';
+
+  setCardBusy(id, true);
+  try {
+    var history = Object.assign({}, call, { clearedAt: Date.now() });
+    var updates = {};
+    updates['callHistory/' + id + '_' + call.createdAt] = history;
+    updates['activeCalls/' + id] = null;
+    await update(ref(db), updates);
+    if (await postCallUpdate(call, text)) showToast('✓ ' + callLabel(call) + ' cleared');
+  } catch (e) {
+    console.warn('Could not clear call:', e);
+    showToast('Could not save — check connection');
+    setCardBusy(id, false);
+  }
+};
+
+function formatTime(ms) {
+  if (!ms) return '';
+  var dt = new Date(ms);
+  return dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function renderActiveCalls() {
+  var listEl = document.getElementById('activeCallsList');
+  var countEl = document.getElementById('activeCallCount');
+  if (!listEl) return;
+
+  // Keep anything the dispatcher is in the middle of typing
+  var typed = {}, focusedId = null;
+  listEl.querySelectorAll('input[id^="unitInput_"]').forEach(function(inp) {
+    typed[inp.id] = inp.value;
+    if (document.activeElement === inp) focusedId = inp.id;
+  });
+
+  var calls = Object.keys(window._activeCalls).map(function(k) { return window._activeCalls[k]; });
+  calls.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  if (countEl) countEl.textContent = calls.length ? '(' + calls.length + ')' : '';
+
+  if (!calls.length) {
+    listEl.innerHTML = '<div class="board-empty">No active calls</div>';
+    return;
+  }
+
+  listEl.innerHTML = calls.map(function(call) {
+    var id = escapeHtml(call.id);
+    var units = call.units ? Object.keys(call.units).map(function(k) {
+      var u = call.units[k];
+      var r = UNIT_ROLES[u.role] ? u.role : 'responding';
+      var kk = escapeHtml(k);
+      var status = u.onLocation
+        ? 'on location' + (u.onLocationAt ? ' ' + escapeHtml(formatTime(u.onLocationAt)) : '')
+        : UNIT_ROLES[r].board;
+      // Unit pill with its own "On location" button inside (nothing is sent to the group)
+      return '<span class="unit-chip ' + r + (u.onLocation ? ' on-location' : '') + '">' +
+        escapeHtml(u.unit) + ' <span class="role">' + status + '</span>' +
+        '<button type="button" class="onloc-btn" ' +
+          'title="' + (u.onLocation ? 'Undo on location' : 'Mark ' + escapeHtml(u.unit) + ' on location (nothing is sent)') + '" ' +
+          'onclick="window.callToggleOnLocation(\'' + id + '\',\'' + kk + '\')">' +
+          (u.onLocation ? 'Undo' : 'On location') +
+        '</button>' +
+        '<button type="button" title="Remove" onclick="window.callRemoveUnit(\'' + id + '\',\'' + kk + '\')">&times;</button>' +
+      '</span>';
+    }).join('') : '<span class="unit-none">No units yet</span>';
+
+    return '<div class="call-card' + (call.urgent ? ' urgent' : '') + '" id="callCard_' + id + '">' +
+      '<div class="call-card-hdr">' +
+        (call.urgent ? '<span class="call-urgent-tag">URGENT</span>' : '') +
+        '<span class="call-card-num">' + escapeHtml(callLabel(call)) + '</span>' +
+        '<span class="call-card-time">' + escapeHtml(formatTime(call.createdAt)) + '</span>' +
+      '</div>' +
+      '<div class="call-card-body">' +
+        (call.lockedInside ? '<div class="call-line" style="color:#B02800;font-weight:700;">' + escapeHtml(call.lockedInside.toUpperCase()) + '</div>' : '') +
+        '<div class="call-line"><b>Nature:</b> ' + escapeHtml(call.nature || '—') + '</div>' +
+        '<div class="call-line"><b>Location:</b> ' + escapeHtml((call.poiName ? call.poiName + ' — ' : '') + (call.location || '—')) + '</div>' +
+        ((call.name || call.phone) ? '<div class="call-line"><b>Caller:</b> ' + escapeHtml([call.name, call.phone].filter(Boolean).join(' · ')) + '</div>' : '') +
+        (call.waMessageId ? '' : '<div class="call-noreply">Updates for this call will be sent as new messages (no original message to reply to).</div>') +
+        '<div class="unit-list">' + units + '</div>' +
+        '<div class="unit-row">' +
+          '<input type="text" id="unitInput_' + id + '" list="knownUnitsList" placeholder="Unit # (e.g. BC-12)" autocomplete="off" ' +
+            'onkeydown="if(event.key===\'Enter\'){event.preventDefault();window.callAddUnit(\'' + id + '\',\'responding\');}" />' +
+          '<button type="button" class="unit-btn assign" onclick="window.callAddUnit(\'' + id + '\',\'responding\')">Responding</button>' +
+          '<button type="button" class="unit-btn backup" onclick="window.callAddUnit(\'' + id + '\',\'backup\')">Backing up</button>' +
+          '<button type="button" class="unit-btn observing" onclick="window.callAddUnit(\'' + id + '\',\'observing\')">Observing</button>' +
+        '</div>' +
+        (call.lastPushAt ? '<div class="call-sent-int">\u2713 Pushed ' + (call.pushCount > 1 ? call.pushCount + '\u00D7, last ' : '') + escapeHtml(formatTime(call.lastPushAt)) + '</div>' : '') +
+        (call.interstateAt ? '<div class="call-sent-int">\u2713 Sent to Interstate ' + escapeHtml(formatTime(call.interstateAt)) + '</div>' : '') +
+        '<div class="call-actions">' +
+          '<button type="button" class="push-call-btn" onclick="window.callPush(\'' + id + '\')"><i class="ti ti-speakerphone"></i> Push call</button>' +
+          '<button type="button" class="int-call-btn" onclick="window.callSendInterstate(\'' + id + '\')"><i class="ti ti-car"></i> Send to Interstate</button>' +
+          '<button type="button" class="clear-call-btn" onclick="window.callClear(\'' + id + '\')"><i class="ti ti-circle-check"></i> Clear call</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  Object.keys(typed).forEach(function(inpId) {
+    var inp = document.getElementById(inpId);
+    if (inp) inp.value = typed[inpId];
+  });
+  if (focusedId) { var f = document.getElementById(focusedId); if (f) f.focus(); }
+}
+
+// Live updates — the board refreshes on its own whenever anything changes
+function startBoard() {
+onValue(ref(db, 'activeCalls'), function(snap) {
+  window._activeCalls = snap.exists() ? snap.val() : {};
+  renderActiveCalls();
+}, function(err) {
+  console.warn('Active calls listener error:', err);
+  var listEl = document.getElementById('activeCallsList');
+  if (listEl) listEl.innerHTML = '<div class="board-empty">Could not load active calls — check connection</div>';
+});
+
+// Remembered unit numbers for the type-ahead list
+onValue(ref(db, 'knownUnits'), function(snap) {
+  var dl = document.getElementById('knownUnitsList');
+  if (!dl) return;
+  var units = snap.exists() ? Object.values(snap.val()) : [];
+  units.sort();
+  dl.innerHTML = units.map(function(u) { return '<option value="' + escapeHtml(u) + '"></option>'; }).join('');
+});
+}
+
+// ── Zello: two-way radio (listen + push-to-talk) ──────────────────────
+// The console stays connected to the picked channel and plays what others
+// say. Hold the button (or the Space bar when not typing) to talk.
+// Everything goes through the bc-waha Worker, which holds the Zello login.
+const ZELLO_WS_URL = 'wss://bc-waha.shmueleidelman-work.workers.dev/zello';
+const PTT_RATE = 16000;        // Hz — must match the Worker's codec header
+const PTT_FRAME = 960;         // 60 ms at 16 kHz
+const PTT_MAX_QUEUE = 250;     // ~15 s of audio held while connecting
+
+// Connection to the Worker
+var zc = { ws: null, ready: false, retry: 0, retryTimer: null, pingTimer: null, lastError: '' };
+// Your transmission
+var ptt = { state: 'idle', id: 0 };
+var pttCounter = 0;
+var pttWorkletUrl = null;
+// Incoming audio
+var rx = { ctx: null, gain: null, streams: {}, muted: false, nextTime: 0, talker: null, endTimer: null };
+
+function zcChannel() {
+  var el = document.getElementById('pttChannel');
+  return el ? el.value : '01 Dispatch';
+}
+
+// ── Label / button look ──
+function pttUpdateUi() {
+  var btn = document.getElementById('pttBtn');
+  var lbl = document.getElementById('pttLabel');
+  var chSel = document.getElementById('pttChannel');
+  if (!btn || !lbl) return;
+  var cls = 'ptt-btn', lcls = 'ptt-label', text;
+  if (ptt.state === 'talking') { cls += ' talking'; lcls += ' talking'; text = 'ON AIR'; }
+  else if (ptt.state === 'connecting') { cls += ' connecting'; text = 'Connecting…'; }
+  else if (ptt.state === 'sending') { cls += ' sending'; text = 'Sending…'; }
+  else if (rx.talker) { cls += ' rx'; lcls += ' rx'; text = '🔊 ' + rx.talker; }
+  else if (zc.ready) { text = 'Hold to talk'; }
+  else if (zc.retry > 0) { cls += ' offline'; text = 'Offline — retrying'; }
+  else { cls += ' offline'; text = 'Connecting…'; }
+  btn.className = cls;
+  lbl.className = lcls;
+  lbl.textContent = text;
+  btn.title = zc.ready ? ('Listening on ' + zcChannel()) : (zc.lastError || 'Not connected to Zello');
+  if (chSel) chSel.disabled = ptt.state !== 'idle';
+}
+
+// ── Connection (stays open; reconnects on its own) ──
+function zelloConnect() {
+  zelloDisconnect();
+  var ws;
+  try { ws = new WebSocket(ZELLO_WS_URL + '?channel=' + encodeURIComponent(zcChannel())); }
+  catch (e) { zelloScheduleReconnect(); return; }
+  ws.binaryType = 'arraybuffer';
+  zc.ws = ws;
+  pttUpdateUi();
+
+  ws.onmessage = function(ev) {
+    if (ws !== zc.ws) return;
+    if (typeof ev.data !== 'string') { rxAudio(ev.data); return; }
+    var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    zelloOnMessage(m);
+  };
+  ws.onclose = function() {
+    if (ws !== zc.ws) return;
+    zc.ws = null;
+    zc.ready = false;
+    if (ptt.state !== 'idle') pttFail('lost connection to Zello');
+    rxStopAll();
+    zelloScheduleReconnect();
+    pttUpdateUi();
+  };
+  ws.onerror = function() { /* onclose follows */ };
+  zc.pingTimer = setInterval(function() {
+    if (ws.readyState === 1) { try { ws.send('{"cmd":"ping"}'); } catch (e) {} }
+  }, 25000);
+}
+
+function zelloDisconnect() {
+  if (zc.retryTimer) { clearTimeout(zc.retryTimer); zc.retryTimer = null; }
+  if (zc.pingTimer) { clearInterval(zc.pingTimer); zc.pingTimer = null; }
+  if (zc.ws) { var w = zc.ws; zc.ws = null; try { w.close(); } catch (e) {} }
+  zc.ready = false;
+  rxStopAll();
+}
+
+function zelloScheduleReconnect() {
+  if (zc.retryTimer) clearTimeout(zc.retryTimer);
+  if (zc.pingTimer) { clearInterval(zc.pingTimer); zc.pingTimer = null; }
+  var delay = Math.min(30000, 1000 * Math.pow(2, zc.retry));
+  zc.retry++;
+  zc.retryTimer = setTimeout(zelloConnect, delay);
+}
+
+function zelloOnMessage(m) {
+  if (m.type === 'ready') {
+    zc.ready = true; zc.retry = 0; zc.lastError = '';
+    if (ptt.state === 'connecting' && !ptt.startSent) pttSendStart();
+  } else if (m.type === 'streaming') {
+    if (ptt.state === 'idle') {
+      // Transmission was cancelled while Zello was opening it — close it right away
+      try { zc.ws.send('{"cmd":"stop"}'); } catch (e) {}
+      return pttUpdateUi();
+    }
+    ptt.streaming = true;
+    if (ptt.connectTimer) { clearTimeout(ptt.connectTimer); ptt.connectTimer = null; }
+    ptt.sender = setInterval(pttPump, 30);
+    if (!ptt.ending) ptt.state = 'talking';
+  } else if (m.type === 'tx_done') {
+    pttEndTx(); ptt.state = 'idle';
+  } else if (m.type === 'tx_error') {
+    pttFail(m.error);
+  } else if (m.type === 'rx_start') {
+    rxStart(m);
+  } else if (m.type === 'rx_stop') {
+    rxStop(m.stream_id);
+  } else if (m.type === 'error') {
+    // The line is about to close; it reconnects by itself. Only toast new errors.
+    if (m.error !== zc.lastError) showToast('Zello: ' + m.error);
+    zc.lastError = m.error;
+  }
+  pttUpdateUi();
+}
+
+// ── Incoming audio ──
+function rxEnsureCtx() {
+  if (!rx.ctx) {
+    try {
+      rx.ctx = new AudioContext();
+      rx.gain = rx.ctx.createGain();
+      rx.gain.gain.value = rx.muted ? 0 : 1;
+      rx.gain.connect(rx.ctx.destination);
+    } catch (e) { return null; }
+  }
+  if (rx.ctx.state === 'suspended') rx.ctx.resume().catch(function() {});
+  return rx.ctx;
+}
+
+function rxStart(m) {
+  if (!('AudioDecoder' in window)) return;
+  var sr = 16000, frameUs = (m.packet_duration || 60) * 1000;
+  try {
+    var h = atob(m.codec_header || '');
+    if (h.length >= 4) {
+      sr = (h.charCodeAt(0) | (h.charCodeAt(1) << 8)) || 16000;
+      var perPacket = h.charCodeAt(2) || 1, frameMs = h.charCodeAt(3) || 60;
+      frameUs = perPacket * frameMs * 1000;
+    }
+  } catch (e) {}
+  rxStop(m.stream_id, true);
+  var dec;
+  try {
+    dec = new AudioDecoder({ output: rxPlay, error: function(e) { console.warn('Zello decode error:', e); } });
+    dec.configure({ codec: 'opus', sampleRate: sr, numberOfChannels: 1 });
+  } catch (e) { console.warn('Cannot decode Zello audio:', e); return; }
+  rx.streams[m.stream_id] = { dec: dec, ts: 0, frameUs: frameUs, from: m.from || 'Someone' };
+  if (rx.endTimer) { clearTimeout(rx.endTimer); rx.endTimer = null; }
+  rx.talker = m.from || 'Someone';
+  rxEnsureCtx();
+}
+
+function rxAudio(buf) {
+  var u = new Uint8Array(buf);
+  if (u.length < 10 || u[0] !== 0x01) return;
+  var sid = new DataView(buf).getUint32(1);
+  var s = rx.streams[sid];
+  if (!s || s.dec.state !== 'configured') return;
+  try {
+    s.dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: s.ts, data: u.subarray(9) }));
+  } catch (e) { console.warn('Zello packet skipped:', e); }
+  s.ts += s.frameUs;
+}
+
+function rxPlay(ad) {
+  try {
+    var ctx = rxEnsureCtx();
+    if (!ctx) return;
+    var n = ad.numberOfFrames;
+    var pcm = new Float32Array(n);
+    ad.copyTo(pcm, { planeIndex: 0, format: 'f32-planar' });
+    var buf = ctx.createBuffer(1, n, ad.sampleRate);
+    buf.copyToChannel(pcm, 0);
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(rx.gain);
+    // Small jitter buffer: start a little in the future, then play back-to-back
+    var now = ctx.currentTime;
+    if (rx.nextTime < now + 0.03) rx.nextTime = now + 0.2;
+    src.start(rx.nextTime);
+    rx.nextTime += buf.duration;
+  } catch (e) {
+    console.warn('Zello playback error:', e);
+  } finally {
+    ad.close();
+  }
+}
+
+function rxStop(streamId, quiet) {
+  var s = rx.streams[streamId];
+  if (s) {
+    delete rx.streams[streamId];
+    s.dec.flush().catch(function() {}).then(function() { try { s.dec.close(); } catch (e) {} });
+  }
+  if (quiet || Object.keys(rx.streams).length) return;
+  // Keep showing the name until the buffered audio finishes playing
+  var left = rx.ctx ? Math.max(0, rx.nextTime - rx.ctx.currentTime) : 0;
+  if (rx.endTimer) clearTimeout(rx.endTimer);
+  rx.endTimer = setTimeout(function() { rx.talker = null; rx.endTimer = null; pttUpdateUi(); }, left * 1000 + 300);
+}
+
+function rxStopAll() {
+  Object.keys(rx.streams).forEach(function(id) { rxStop(id, true); });
+  rx.talker = null;
+}
+
+window.toggleZelloMute = function() {
+  rx.muted = !rx.muted;
+  if (rx.gain) rx.gain.gain.value = rx.muted ? 0 : 1;
+  var b = document.getElementById('pttMute');
+  if (b) {
+    b.classList.toggle('muted', rx.muted);
+    b.innerHTML = rx.muted ? '<i class="ti ti-volume-off"></i>' : '<i class="ti ti-volume"></i>';
+    b.title = rx.muted ? 'Incoming audio muted' : 'Mute incoming audio';
+  }
+  try { localStorage.setItem('pttMuted', rx.muted ? '1' : '0'); } catch (e) {}
+  rxEnsureCtx();
+};
+
+// ── Your transmission ──
+function pttGetWorkletUrl() {
+  if (pttWorkletUrl) return pttWorkletUrl;
+  var code =
+    "class PttCapture extends AudioWorkletProcessor {" +
+    "  constructor() { super(); this.buf = new Float32Array(" + PTT_FRAME + "); this.n = 0; }" +
+    "  process(inputs) {" +
+    "    var ch = inputs[0] && inputs[0][0];" +
+    "    if (ch) for (var i = 0; i < ch.length; i++) {" +
+    "      this.buf[this.n++] = ch[i];" +
+    "      if (this.n === this.buf.length) { this.port.postMessage(this.buf.slice(0)); this.n = 0; }" +
+    "    }" +
+    "    return true;" +
+    "  }" +
+    "}" +
+    "registerProcessor('ptt-capture', PttCapture);";
+  pttWorkletUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+  return pttWorkletUrl;
+}
+
+function pttStopCapture() {
+  if (ptt.node) { try { ptt.node.port.onmessage = null; ptt.node.disconnect(); } catch (e) {} ptt.node = null; }
+  if (ptt.mic) { ptt.mic.getTracks().forEach(function(t) { t.stop(); }); ptt.mic = null; }
+  if (ptt.ctx) { try { ptt.ctx.close(); } catch (e) {} ptt.ctx = null; }
+}
+
+// Clears your transmission (the connection stays open for listening)
+function pttEndTx() {
+  if (ptt.sender) { clearInterval(ptt.sender); ptt.sender = null; }
+  if (ptt.timeout) { clearTimeout(ptt.timeout); ptt.timeout = null; }
+  if (ptt.connectTimer) { clearTimeout(ptt.connectTimer); ptt.connectTimer = null; }
+  pttStopCapture();
+  if (ptt.encoder) { try { if (ptt.encoder.state !== 'closed') ptt.encoder.close(); } catch (e) {} ptt.encoder = null; }
+  ptt.queue = [];
+  ptt.streaming = false;
+}
+
+function pttFail(msg) {
+  if (ptt.state === 'idle') return;
+  var wasStreaming = ptt.streaming;
+  pttEndTx();
+  ptt.state = 'idle';
+  if (wasStreaming && zc.ws && zc.ws.readyState === 1) { try { zc.ws.send('{"cmd":"stop"}'); } catch (e) {} }
+  if (msg) showToast('Zello: ' + msg);
+  pttUpdateUi();
+}
+
+function pttSendStart() {
+  if (!zc.ws || zc.ws.readyState !== 1) return;
+  ptt.startSent = true;
+  zc.ws.send('{"cmd":"start"}');
+}
+
+// Sends queued Opus packets, up to ~2x real time so a backlog catches up
+// without flooding the channel.
+function pttPump() {
+  if (!ptt.streaming || !zc.ws || zc.ws.readyState !== 1) return;
+  if (ptt.queue.length) zc.ws.send(ptt.queue.shift());
+  if (!ptt.queue.length && ptt.ending && ptt.captureDone) pttSendStop();
+}
+
+function pttSendStop() {
+  if (ptt.stopSent) return;
+  ptt.stopSent = true;
+  try { zc.ws.send('{"cmd":"stop"}'); } catch (e) {}
+  // The Worker answers "tx_done"; if it doesn't, free the button anyway
+  var id = ptt.id;
+  ptt.timeout = setTimeout(function() { if (ptt.id === id && ptt.state !== 'idle') { pttEndTx(); ptt.state = 'idle'; pttUpdateUi(); } }, 4000);
+}
+
+async function pttStart() {
+  if (ptt.state !== 'idle') return;
+  if (!('AudioEncoder' in window) || !window.AudioWorkletNode || !navigator.mediaDevices) {
+    showToast('Push-to-talk needs Chrome or Edge on this device');
+    return;
+  }
+  rxEnsureCtx();
+  var id = ++pttCounter;
+  ptt = { id: id, state: 'connecting', queue: [], streaming: false, ending: false, captureDone: false,
+          finishing: false, startSent: false, stopSent: false, ts: 0 };
+  pttUpdateUi();
+
+  // 1. Ask Zello for the floor right away (or as soon as the line is up)
+  if (zc.ready) pttSendStart();
+  else if (!zc.ws) zelloConnect();
+  ptt.connectTimer = setTimeout(function() { if (ptt.id === id && !ptt.streaming) pttFail('Zello did not answer'); }, 10000);
+
+  // 2. Microphone + Opus encoder (records while waiting, sent once live)
+  try {
+    ptt.mic = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+  } catch (e) {
+    return pttFail('microphone blocked — allow mic access for this site');
+  }
+  if (ptt.id !== id || ptt.state === 'idle') { pttStopCapture(); return; }
+
+  try {
+    ptt.encoder = new AudioEncoder({
+      output: function(chunk) {
+        var buf = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(buf);
+        if (ptt.queue && ptt.queue.length < PTT_MAX_QUEUE) ptt.queue.push(buf.buffer);
+      },
+      error: function(e) { console.warn('Opus encoder error:', e); pttFail('audio encoder error'); }
+    });
+    ptt.encoder.configure({
+      codec: 'opus', sampleRate: PTT_RATE, numberOfChannels: 1, bitrate: 24000,
+      opus: { frameDuration: 60000, application: 'voip' }
+    });
+
+    ptt.ctx = new AudioContext({ sampleRate: PTT_RATE });
+    await ptt.ctx.audioWorklet.addModule(pttGetWorkletUrl());
+    if (ptt.id !== id || ptt.state === 'idle' || !ptt.ctx) return;
+    var src = ptt.ctx.createMediaStreamSource(ptt.mic);
+    ptt.node = new AudioWorkletNode(ptt.ctx, 'ptt-capture');
+    var mute = ptt.ctx.createGain(); mute.gain.value = 0;   // keeps the graph running, no echo
+    src.connect(ptt.node); ptt.node.connect(mute); mute.connect(ptt.ctx.destination);
+    ptt.node.port.onmessage = function(e) {
+      if (!ptt.encoder || ptt.encoder.state !== 'configured') return;
+      var frames = e.data;
+      var ad = new AudioData({ format: 'f32', sampleRate: PTT_RATE, numberOfFrames: frames.length, numberOfChannels: 1, timestamp: ptt.ts, data: frames });
+      ptt.ts += Math.round(frames.length * 1e6 / PTT_RATE);
+      ptt.encoder.encode(ad);
+      ad.close();
+    };
+  } catch (e) {
+    console.warn('PTT audio setup failed:', e);
+    return pttFail('could not start the microphone');
+  }
+
+  // Released while we were still setting up
+  if (ptt.ending) pttFinishCapture();
+}
+
+async function pttFinishCapture() {
+  if (ptt.finishing) return;
+  ptt.finishing = true;
+  pttStopCapture();
+  if (ptt.encoder && ptt.encoder.state === 'configured') {
+    try { await ptt.encoder.flush(); } catch (e) {}
+  }
+  ptt.captureDone = true;
+  if (ptt.state !== 'idle') ptt.state = 'sending';
+  if (ptt.streaming && !ptt.queue.length) pttSendStop();
+  pttUpdateUi();
+}
+
+function pttStop() {
+  if (ptt.state === 'idle' || ptt.ending) return;
+  ptt.ending = true;
+  // If the mic is already running, wrap up now; otherwise pttStart wraps up
+  // as soon as the mic is ready (see the end of pttStart).
+  if (ptt.node) pttFinishCapture();
+}
+
+(function setupZello() {
+  var btn = document.getElementById('pttBtn');
+  if (!btn) return;
+
+  // Remember the last channel and mute choice on this device
+  var chSel = document.getElementById('pttChannel');
+  try {
+    var saved = localStorage.getItem('pttChannel');
+    if (saved && chSel.querySelector('option[value="' + saved + '"]')) chSel.value = saved;
+    if (localStorage.getItem('pttMuted') === '1') window.toggleZelloMute();
+  } catch (e) {}
+  chSel.addEventListener('change', function() {
+    try { localStorage.setItem('pttChannel', chSel.value); } catch (e) {}
+    chSel.blur(); // so the Space bar goes back to push-to-talk
+    zc.retry = 0;
+    zelloConnect();
+    showToast('Zello channel: ' + chSel.value);
+  });
+
+  btn.addEventListener('pointerdown', function(e) { e.preventDefault(); try { btn.setPointerCapture(e.pointerId); } catch (x) {} pttStart(); });
+  btn.addEventListener('pointerup', function() { pttStop(); });
+  btn.addEventListener('pointercancel', function() { pttStop(); });
+  btn.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+  // ── Push-to-talk key (Space by default; click the keyboard button to change) ──
+  var pttKey = 'Space';
+  var pickingKey = false;
+  try { pttKey = localStorage.getItem('pttKey') || 'Space'; } catch (e) {}
+
+  function typing(t) {
+    return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+  }
+  // Keys that don't type anything (F1-F24, Insert, Pause, ` etc.) work even
+  // while your cursor is in a text box. Letter/number/space keys don't.
+  function worksWhileTyping(code) {
+    return /^F\d{1,2}$/.test(code) || ['Backquote', 'Insert', 'Pause', 'ScrollLock', 'PrintScreen',
+      'ContextMenu', 'NumpadEnter', 'NumLock', 'ControlRight', 'AltRight', 'MetaRight'].indexOf(code) !== -1;
+  }
+  function keyName(code) {
+    return code.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'Numpad ')
+      .replace('Backquote', '` (backtick)').replace('ControlRight', 'Right Ctrl')
+      .replace('AltRight', 'Right Alt/Option').replace('MetaRight', 'Right Cmd');
+  }
+  function updateKeyButton() {
+    var b = document.getElementById('pttKeyBtn');
+    if (!b) return;
+    b.classList.toggle('listening', pickingKey);
+    b.title = pickingKey ? 'Press the key you want to use (Esc to cancel)'
+      : 'Push-to-talk key: ' + keyName(pttKey) + (worksWhileTyping(pttKey) ? ' (works while typing)' : '') + ' \u2014 click to change';
+  }
+
+  window.setPttKey = function() {
+    pickingKey = true;
+    updateKeyButton();
+    showToast('Press the key you want for push-to-talk (Esc to cancel)');
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (pickingKey) {
+      e.preventDefault(); e.stopPropagation();
+      pickingKey = false;
+      if (e.code === 'Escape') { updateKeyButton(); showToast('Push-to-talk key unchanged: ' + keyName(pttKey)); return; }
+      if (['Tab', 'Enter', 'Backspace', 'ShiftLeft', 'ShiftRight', 'CapsLock'].indexOf(e.code) !== -1 || !e.code) {
+        updateKeyButton(); showToast('That key can\u2019t be used \u2014 pick another'); return;
+      }
+      pttKey = e.code;
+      try { localStorage.setItem('pttKey', pttKey); } catch (x) {}
+      updateKeyButton();
+      showToast('\u2713 Push-to-talk key: ' + keyName(pttKey) + (worksWhileTyping(pttKey) ? ' (works while typing)' : ''));
+      return;
+    }
+    if (e.code !== pttKey || e.repeat) return;
+    if (typing(e.target) && !worksWhileTyping(pttKey)) return;
+    e.preventDefault(); pttStart();
+  }, true);
+  document.addEventListener('keyup', function(e) {
+    if (e.code !== pttKey) return;
+    if (typing(e.target) && !worksWhileTyping(pttKey) && ptt.state === 'idle') return;
+    e.preventDefault(); pttStop();
+  }, true);
+  updateKeyButton();
+  window.addEventListener('blur', function() { pttStop(); });
+
+  // Browsers only allow sound after you've clicked or pressed a key once
+  function unlockAudio() { rxEnsureCtx(); }
+  document.addEventListener('pointerdown', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
+
+  // If the connection dropped while the screen was off, reconnect right away
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && !zc.ws) { zc.retry = 0; zelloConnect(); }
+  });
+
+  pttUpdateUi();
+  zelloConnect();
+})();
 
 window.verifyLocation = function() {
   var loc = document.getElementById('location').value;
@@ -3229,13 +4195,11 @@ window.clearForm = async function() {
   });
   window.clearMake();
   if (window.resetYearUI) window.resetYearUI();
-
-  // Reset the color picker display too (label, swatch, "Other" box), not just the hidden value
+  // Reset the color picker label/dot too (not just the hidden value)
+  if (isMobile) { if (window.setColor) window.setColor(''); }
+  else { if (window.selectDesktopColor) window.selectDesktopColor(''); }
   var customColorEl = document.getElementById('customColor');
   if (customColorEl) customColorEl.value = '';
-  if (document.getElementById('colorDropdownLabel') && window.selectDesktopColor) window.selectDesktopColor('');
-  if (document.getElementById('colorPickerLabel') && window.setColor) window.setColor('');
-
   document.getElementById('natureType').value = '';
 
   document.getElementById('location').dataset.lat = '';
@@ -3270,20 +4234,18 @@ window.clearForm = async function() {
   var vTrim = document.getElementById('vTrim');
   if (vTrim) { vTrim.innerHTML = '<option value="">— Select year, make &amp; model first —</option>'; vTrim.disabled = true; }
 
-  document.getElementById('callNum').value = '';
+  // Next Call# = last Call# in the group + 1. If the number that was on screen
+  // was never sent, still move past it so it isn't reused.
+  var callNumEl = document.getElementById('callNum');
+  var onScreen = parseInt(callNumEl.value, 10);
+  var r = await fillNextCallNumber();
+  if (!isNaN(onScreen) && (r.next == null || r.next <= onScreen)) callNumEl.value = onScreen + 1;
 };
-
-// Typing a custom year ("Other") also refreshes the model list
-(function() {
-  var cy = document.getElementById('customYear');
-  if (cy) cy.addEventListener('change', function() {
-    var mk = document.getElementById('vMake') ? document.getElementById('vMake').value : '';
-    if (mk && window.loadModelsForMake) window.loadModelsForMake(mk);
-  });
-})();
 
 // ── Init ──
 loadAll();
+startBoard();
+startTelzioPolling();
 </script>
 <script>
 // ── PWA: installability (Android/Chrome "Add to Home Screen") ──
