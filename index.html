@@ -805,6 +805,7 @@ const db = getDatabase(app);
 window.isUrgent = false;
 window.chips = {};
 window.makesData = {};
+window.customModelsByMake = {};
 
 // ── Comprehensive built-in makes & models (no seed script needed) ──
 window.makesData = {
@@ -1541,6 +1542,7 @@ async function loadAll() {
     if (makesSnap.exists()) {
       const saved = makesSnap.val();
       Object.keys(saved).forEach(function(m) {
+        window.customModelsByMake[m] = Array.isArray(saved[m]) ? saved[m].slice() : [];
         if (!window.makesData[m]) window.makesData[m] = saved[m];
         else {
           // Merge custom models into existing make
@@ -1914,6 +1916,8 @@ window.selectYear = function(year) {
   if (menu) menu.classList.remove('open');
   var customWrap = document.getElementById('customYearWrap');
   if (customWrap) customWrap.style.display = (year === 'Other') ? 'block' : 'none';
+  var mk = document.getElementById('vMake') ? document.getElementById('vMake').value : '';
+  if (mk && window.loadModelsForMake) window.loadModelsForMake(mk);
   if (window.refreshVehicleTrim) window.refreshVehicleTrim();
 };
 
@@ -1967,6 +1971,8 @@ window.setYear = function(year) {
   if (label) label.textContent = year || '— Select year —';
   var customWrap = document.getElementById('customYearWrap');
   if (customWrap) customWrap.style.display = (year === 'Other') ? 'block' : 'none';
+  var mk = document.getElementById('vMake') ? document.getElementById('vMake').value : '';
+  if (mk && window.loadModelsForMake) window.loadModelsForMake(mk);
   if (window.refreshVehicleTrim) window.refreshVehicleTrim();
 };
 
@@ -2254,6 +2260,82 @@ function populateModelOptions(models) {
   if (!isMobile) buildModelDropdownMenu(withOther);
 }
 
+// ── Live model list from NHTSA vPIC (free U.S. gov't vehicle database, no key) ──
+// When a make AND a year are chosen, the Model list comes from NHTSA for that
+// exact make + year, plus any custom models dispatchers saved in Firebase.
+// No year yet, or NHTSA unreachable → falls back to the built-in list.
+window.customModelsByMake = window.customModelsByMake || {};
+var nhtsaModelCache = {};
+var nhtsaRequestSeq = 0;
+
+function getSelectedYear() {
+  var y = document.getElementById('vYear') ? document.getElementById('vYear').value.trim() : '';
+  if (y === 'Other') y = document.getElementById('customYear') ? document.getElementById('customYear').value.trim() : '';
+  return /^(19|20)\d\d$/.test(y) ? y : '';
+}
+
+function builtInModelsFor(make) {
+  var models = window.makesData[make];
+  if (models && models.models) models = models.models;
+  return Array.isArray(models) ? models : [];
+}
+
+function mergeModelLists(a, b) {
+  var seen = {}, out = [];
+  a.concat(b).forEach(function(m) {
+    var k = String(m || '').trim().toLowerCase();
+    if (k && !seen[k]) { seen[k] = true; out.push(String(m).trim()); }
+  });
+  return out.sort(function(x, y) { return x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }); });
+}
+
+async function fetchNhtsaModels(make, year) {
+  var key = make.toLowerCase() + '|' + year;
+  if (nhtsaModelCache[key]) return nhtsaModelCache[key];
+  var url = 'https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/' +
+    encodeURIComponent(make) + '/modelyear/' + year + '?format=json';
+  var resp = await fetch(url);
+  if (!resp.ok) throw new Error('NHTSA HTTP ' + resp.status);
+  var data = await resp.json();
+  var names = (data.Results || []).map(function(r) { return r.Model_Name; }).filter(Boolean);
+  nhtsaModelCache[key] = names;
+  return names;
+}
+
+// Rebuild the Model list for the current make/year. Keeps the selected model
+// if it's still in the new list.
+window.loadModelsForMake = async function(make) {
+  if (!make || make === 'Other') return;
+  var year = getSelectedYear();
+  var custom = window.customModelsByMake[make] || [];
+  var seq = ++nhtsaRequestSeq;
+  var current = document.getElementById('vModel') ? document.getElementById('vModel').value : '';
+
+  if (!year) { populateModelOptions(mergeModelLists(builtInModelsFor(make), custom)); return; }
+
+  try {
+    var live = await fetchNhtsaModels(make, year);
+    if (seq !== nhtsaRequestSeq) return;                       // user picked something else meanwhile
+    if (document.getElementById('vMake').value !== make) return;
+    if (!live.length) throw new Error('no models');
+    populateModelOptions(mergeModelLists(live, custom));
+  } catch (e) {
+    console.warn('NHTSA model lookup failed, using built-in list:', e.message || e);
+    if (seq !== nhtsaRequestSeq) return;
+    populateModelOptions(mergeModelLists(builtInModelsFor(make), custom));
+  }
+
+  if (current && current !== 'Other') {
+    var still = window._modelOptions.some(function(m) { return m.toLowerCase() === current.toLowerCase(); });
+    if (still && !isMobile) {
+      var menu = document.getElementById('modelDropdownMenu');
+      if (menu) menu.querySelectorAll('.color-option').forEach(function(o){
+        o.classList.toggle('selected', o.dataset.value.toLowerCase() === current.toLowerCase());
+      });
+    }
+  }
+};
+
 var modelDropdownOutsideHandler = null;
 window.toggleModelDropdown = function() {
   if (!window._modelEnabled) { showToast('Select a make first'); return; }
@@ -2350,10 +2432,11 @@ window.selectMake = function(make) {
   updateMakeLogo(make === 'Other' ? '' : make);
 
   window.resetModelUI();
-  if (make && make !== 'Other' && window.makesData[make]) {
-    var models = window.makesData[make];
-    if (models.models) models = models.models;
-    if (Array.isArray(models)) { populateModelOptions(models); if (window.refreshVehicleTrim) window.refreshVehicleTrim(); return; }
+  if (make && make !== 'Other') {
+    populateModelOptions(mergeModelLists(builtInModelsFor(make), window.customModelsByMake[make] || []));
+    window.loadModelsForMake(make);
+    if (window.refreshVehicleTrim) window.refreshVehicleTrim();
+    return;
   }
   populateModelOptions([]);
   if (window.refreshVehicleTrim) window.refreshVehicleTrim();
@@ -2497,8 +2580,8 @@ window.saveCustomModel = async function() {
     }
     models.push(model); models.sort();
     await set(ref(db, 'makes/' + make), models);
-    window.makesData[make] = models;
-    populateModelOptions(models);
+    window.customModelsByMake[make] = models.slice();
+    populateModelOptions(mergeModelLists(window._modelOptions.filter(function(m){ return m !== 'Other'; }), models));
     window.selectModel(model);
     showToast('\u2713 Saved model "' + model + '"');
   } catch(e) { showToast('Could not save — check connection'); }
@@ -3146,6 +3229,13 @@ window.clearForm = async function() {
   });
   window.clearMake();
   if (window.resetYearUI) window.resetYearUI();
+
+  // Reset the color picker display too (label, swatch, "Other" box), not just the hidden value
+  var customColorEl = document.getElementById('customColor');
+  if (customColorEl) customColorEl.value = '';
+  if (document.getElementById('colorDropdownLabel') && window.selectDesktopColor) window.selectDesktopColor('');
+  if (document.getElementById('colorPickerLabel') && window.setColor) window.setColor('');
+
   document.getElementById('natureType').value = '';
 
   document.getElementById('location').dataset.lat = '';
@@ -3182,6 +3272,15 @@ window.clearForm = async function() {
 
   document.getElementById('callNum').value = '';
 };
+
+// Typing a custom year ("Other") also refreshes the model list
+(function() {
+  var cy = document.getElementById('customYear');
+  if (cy) cy.addEventListener('change', function() {
+    var mk = document.getElementById('vMake') ? document.getElementById('vMake').value : '';
+    if (mk && window.loadModelsForMake) window.loadModelsForMake(mk);
+  });
+})();
 
 // ── Init ──
 loadAll();
